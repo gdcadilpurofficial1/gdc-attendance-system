@@ -1,18 +1,43 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { Login } from './pages/Login';
-import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
-import { RollCall } from './pages/teacher/RollCall';
-import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { StudentManager } from './pages/admin/StudentManager';
-import { AcademicManager } from './pages/admin/AcademicManager';
-import { TeacherManager } from './pages/admin/TeacherManager';
-import { MessagingHub } from './pages/admin/MessagingHub';
-import { ReportsExport } from './pages/admin/ReportsExport';
 import { Toaster } from 'react-hot-toast';
+
+// High-performance code-splitting: Pages loaded on demand
+const TeacherDashboard = lazy(() =>
+  import('./pages/teacher/TeacherDashboard').then((m) => ({ default: m.TeacherDashboard }))
+);
+const RollCall = lazy(() =>
+  import('./pages/teacher/RollCall').then((m) => ({ default: m.RollCall }))
+);
+const AdminDashboard = lazy(() =>
+  import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+);
+const StudentManager = lazy(() =>
+  import('./pages/admin/StudentManager').then((m) => ({ default: m.StudentManager }))
+);
+const AcademicManager = lazy(() =>
+  import('./pages/admin/AcademicManager').then((m) => ({ default: m.AcademicManager }))
+);
+const TeacherManager = lazy(() =>
+  import('./pages/admin/TeacherManager').then((m) => ({ default: m.TeacherManager }))
+);
+const MessagingHub = lazy(() =>
+  import('./pages/admin/MessagingHub').then((m) => ({ default: m.MessagingHub }))
+);
+const ReportsExport = lazy(() =>
+  import('./pages/admin/ReportsExport').then((m) => ({ default: m.ReportsExport }))
+);
+
+const PageLoader: React.FC = () => (
+  <div className="min-h-[60vh] flex flex-col items-center justify-center">
+    <div className="w-9 h-9 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+    <span className="mt-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Loading GDC Portal...</span>
+  </div>
+);
 
 // Smart Home Redirector based on user role
 const HomeRedirect: React.FC = () => {
@@ -28,31 +53,33 @@ export const AppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar />
       <main className="flex-1">
-        <Routes>
-          <Route path="/login" element={<Login />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<HomeRedirect />} />
+            {/* Protected Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<HomeRedirect />} />
 
-            {/* Teacher Routes */}
-            <Route path="/teacher" element={<TeacherDashboard />} />
-            <Route path="/teacher/roll-call" element={<RollCall />} />
-          </Route>
+              {/* Teacher Routes */}
+              <Route path="/teacher" element={<TeacherDashboard />} />
+              <Route path="/teacher/roll-call" element={<RollCall />} />
+            </Route>
 
-          {/* Admin & Principal Guarded Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'principal']} />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/students" element={<StudentManager />} />
-            <Route path="/admin/academic" element={<AcademicManager />} />
-            <Route path="/admin/teachers" element={<TeacherManager />} />
-            <Route path="/admin/messaging" element={<MessagingHub />} />
-            <Route path="/admin/reports" element={<ReportsExport />} />
-          </Route>
+            {/* Admin & Principal Guarded Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'principal']} />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/students" element={<StudentManager />} />
+              <Route path="/admin/academic" element={<AcademicManager />} />
+              <Route path="/admin/teachers" element={<TeacherManager />} />
+              <Route path="/admin/messaging" element={<MessagingHub />} />
+              <Route path="/admin/reports" element={<ReportsExport />} />
+            </Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<HomeRedirect />} />
-        </Routes>
+            {/* Fallback */}
+            <Route path="*" element={<HomeRedirect />} />
+          </Routes>
+        </Suspense>
       </main>
 
       <Toaster

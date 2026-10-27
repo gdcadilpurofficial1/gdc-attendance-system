@@ -7,6 +7,8 @@ import {
   Edit2,
   Trash2,
   Search,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -15,6 +17,10 @@ export const StudentManager: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 100;
 
   // Filters
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -47,6 +53,7 @@ export const StudentManager: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    setCurrentPage(1);
     loadStudents();
   }, [selectedClass, search]);
 
@@ -209,6 +216,12 @@ export const StudentManager: React.FC = () => {
     }
   };
 
+  const totalStudents = students.length;
+  const totalPages = Math.ceil(totalStudents / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalStudents);
+  const paginatedStudents = students.slice(startIndex, endIndex);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -277,8 +290,12 @@ export const StudentManager: React.FC = () => {
       {/* Student Records Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <span className="font-bold text-sm text-slate-900">Enrolled Students ({students.length})</span>
-          <span className="text-xs text-slate-400">Total capacity ~1,000 students</span>
+          <span className="font-bold text-sm text-slate-900">
+            Enrolled Students ({totalStudents})
+          </span>
+          <span className="text-xs text-slate-500 font-medium">
+            Page {currentPage} of {totalPages} (100 students / page)
+          </span>
         </div>
 
         {loading ? (
@@ -304,7 +321,7 @@ export const StudentManager: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                {students.map((st) => (
+                {paginatedStudents.map((st) => (
                   <tr key={st._id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3 px-4 font-black text-slate-900">{st.rollNo}</td>
                     <td className="py-3 px-4 font-bold text-slate-900">{st.fullName}</td>
@@ -340,6 +357,41 @@ export const StudentManager: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && totalStudents > 0 && (
+          <div className="px-6 py-4 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <span className="text-slate-500 font-medium">
+              Showing <strong className="text-slate-800">{totalStudents > 0 ? startIndex + 1 : 0}</strong> to{' '}
+              <strong className="text-slate-800">{endIndex}</strong> of{' '}
+              <strong className="text-slate-800">{totalStudents}</strong> students
+            </span>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <span className="font-bold text-slate-700 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         )}
       </div>

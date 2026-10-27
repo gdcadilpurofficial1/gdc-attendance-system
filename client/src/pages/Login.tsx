@@ -1,23 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, User, Eye, EyeOff, ShieldCheck, GraduationCap } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const saved = localStorage.getItem('gdc_remember_user');
+    if (saved) {
+      setUsername(saved);
+      setRememberMe(true);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password) {
-      toast.error('Please enter both username and password.');
+      toast.error('Please enter both username/email and password.');
       return;
+    }
+
+    if (rememberMe) {
+      localStorage.setItem('gdc_remember_user', username.trim());
+    } else {
+      localStorage.removeItem('gdc_remember_user');
     }
 
     setLoading(true);
@@ -43,17 +58,19 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-8 sm:p-10">
-        {/* Header */}
+        {/* Header with College Logo */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-900 text-white flex items-center justify-center font-black text-2xl shadow-lg shadow-indigo-950/20 mb-4">
-            <GraduationCap className="w-9 h-9" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Govt Degree College Adilpur Logo"
+            className="w-20 h-20 object-contain drop-shadow-md mb-3"
+          />
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">GDC Adilpur</h1>
-          <p className="text-xs font-semibold text-indigo-700 uppercase tracking-widest mt-1">
-            Attendance Management Portal
+          <p className="text-xs font-bold text-indigo-700 uppercase tracking-widest mt-0.5">
+            Attendance Portal
           </p>
           <span className="text-xs text-slate-500 mt-2">
-            Secure administrative and teacher portal for attendance recording and parent notifications.
+            Official portal for daily student roll calls, parent notices, and academic attendance records.
           </span>
         </div>
 
@@ -61,7 +78,7 @@ export const Login: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Username
+              Email or Username
             </label>
             <div className="relative">
               <User className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -69,11 +86,11 @@ export const Login: React.FC = () => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. admin or tariq_science"
+                placeholder="username@gdcadilpur.edu.pk"
                 autoCapitalize="none"
                 autoCorrect="off"
                 required
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition"
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition"
               />
             </div>
           </div>
@@ -102,6 +119,20 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
+          {/* Remember Me Checkbox */}
+          <div className="flex items-center justify-between pt-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded text-indigo-700 focus:ring-indigo-600 border-slate-300"
+              />
+              <span className="text-xs font-semibold text-slate-600">Remember Me on this device</span>
+            </label>
+            <span className="text-[11px] text-slate-400">1-Day Session</span>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -124,7 +155,7 @@ export const Login: React.FC = () => {
         {/* Security Notice */}
         <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-center gap-2 text-slate-400 text-xs">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Protected with Role-Based Access Control</span>
+          <span>Role-Based Access Protected</span>
         </div>
       </div>
 

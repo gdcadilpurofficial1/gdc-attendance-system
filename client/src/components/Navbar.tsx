@@ -27,15 +27,17 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 rounded-xl bg-indigo-900 text-white flex items-center justify-center font-bold text-lg shadow-sm group-hover:bg-indigo-800 transition">
-                GDC
-              </div>
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <img
+                src="/logo.png"
+                alt="GDC Adilpur Logo"
+                className="w-10 h-10 object-contain drop-shadow-xs group-hover:scale-105 transition"
+              />
               <div className="flex flex-col">
-                <span className="font-bold text-slate-900 text-sm tracking-tight leading-tight">
+                <span className="font-black text-slate-900 text-sm tracking-tight leading-tight">
                   Govt Degree College Adilpur
                 </span>
-                <span className="text-[11px] text-indigo-700 font-medium">Attendance Management Portal</span>
+                <span className="text-[11px] text-indigo-700 font-semibold">Attendance Portal</span>
               </div>
             </Link>
           </div>

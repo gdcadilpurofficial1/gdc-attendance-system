@@ -10,6 +10,8 @@ import {
   Filter,
   PhoneCall,
   Search,
+  BarChart3,
+  TrendingUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -209,6 +211,126 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <span className="text-2xl font-black text-rose-700">{truancyAlerts.length}</span>
           <span className="block text-[11px] text-rose-600 font-semibold mt-1">🚨 3+ Days Consecutive</span>
+        </div>
+      </div>
+
+      {/* Visual Analytics & Turnout Bar Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Turnout by Class / Program Bar Chart */}
+        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-700" />
+              <h2 className="text-base font-black text-slate-900 tracking-tight">Turnout Rate by Class</h2>
+            </div>
+            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+              Date: {selectedDate}
+            </span>
+          </div>
+
+          {sessions.length === 0 ? (
+            <div className="py-10 text-center text-xs text-slate-400 font-semibold">
+              No sessions submitted for {selectedDate}. Attendance rates will appear once roll calls are marked.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sessions.map((sess) => {
+                const total = sess.totalStudents || 1;
+                const pct = Math.round((sess.presentCount / total) * 100);
+                const isHigh = pct >= 85;
+                const isMed = pct >= 70 && pct < 85;
+
+                return (
+                  <div key={sess._id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-800">
+                        {sess.classSectionId?.name || 'Class'}{' '}
+                        <span className="text-slate-400 font-normal">({sess.programId?.code || 'Prog'})</span>
+                      </span>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="text-slate-500 text-[11px]">
+                          {sess.presentCount}/{sess.totalStudents} Present
+                        </span>
+                        <span
+                          className={`font-black text-xs px-2 py-0.5 rounded-md ${
+                            isHigh
+                              ? 'text-emerald-700 bg-emerald-50'
+                              : isMed
+                              ? 'text-indigo-700 bg-indigo-50'
+                              : 'text-rose-700 bg-rose-50'
+                          }`}
+                        >
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Track */}
+                    <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden flex shadow-inner">
+                      <div
+                        style={{ width: `${pct}%` }}
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isHigh ? 'bg-emerald-500' : isMed ? 'bg-indigo-600' : 'bg-rose-500'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Turnout Ratio & College Overview Stacked Chart */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-5 h-5 text-indigo-700" />
+              <h2 className="text-base font-black text-slate-900 tracking-tight">Today's Attendance Ratio</h2>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Overall Turnout</span>
+                <span className="font-black text-slate-900 text-sm">{stats?.turnoutPercentage || 0}%</span>
+              </div>
+
+              {/* Stacked Ratio Bar */}
+              <div className="w-full h-4 bg-slate-200 rounded-full overflow-hidden flex shadow-inner">
+                <div
+                  style={{ width: `${stats?.turnoutPercentage || 0}%` }}
+                  className="bg-emerald-500 h-full transition-all duration-500"
+                  title="Present"
+                />
+                <div
+                  style={{
+                    width: `${
+                      stats && stats.presentToday + stats.absentToday > 0
+                        ? 100 - (stats?.turnoutPercentage || 0)
+                        : 0
+                    }%`,
+                  }}
+                  className="bg-rose-500 h-full transition-all duration-500"
+                  title="Absent"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2 text-center text-xs">
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <span className="block text-[10px] font-bold text-emerald-600 uppercase">Present</span>
+                  <span className="font-black text-emerald-800 text-base">{stats?.presentToday || 0}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-100">
+                  <span className="block text-[10px] font-bold text-rose-600 uppercase">Absent</span>
+                  <span className="font-black text-rose-800 text-base">{stats?.absentToday || 0}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 text-center">
+            Automatic keep-alive active (7:00 AM – 6:00 PM PKT)
+          </div>
         </div>
       </div>
 
