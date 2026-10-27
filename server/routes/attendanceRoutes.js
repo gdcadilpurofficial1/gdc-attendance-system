@@ -1,0 +1,283 @@
+import express from 'express';
+import AttendanceSession from '../models/AttendanceSession.js';
+import Student from '../models/Student.js';
+import TruancyAlert from '../models/TruancyAlert.js';
+import messagingQueue from '../services/messagingQueue.js';
+import { protect, authorize } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Helper to calculate consecutive absences and apply confirmation triggers
+const finalizeSessionConfirmation = async (session, user) => {
+  session.isConfirmed = true;
+  session.confirmedAt = new Date();
+  session.confirmedBy = user._id;
+
+  for (const record of session.records) {
+    const student = await Student.findById(record.studentId);
+    if (!student) continue;
+
+    let consecutive = student.consecutiveAbsences || 0;
+
+    if (record.status === 'ABSENT') {
+      consecutive += 1;
+      student.totalDaysAbsent = (student.totalDaysAbsent || 0) + 1;
+
+      // 🚨 CRITICAL RULE: If absent 3 or more consecutive days, trigger/update Truancy Alert
+      if (consecutive >= 3) {
+        await TruancyAlert.findOneAndUpdate(
+          { studentId: student._id, status: { $in: ['ACTIVE', 'PARENT_CONTACTED'] } },
+          {
+            studentId: student._id,
+            classSectionId: session.classSectionId,
+            programId: session.programId,
+            consecutiveDays: consecutive,
+            dateTriggered: session.date,
+            status: 'ACTIVE',
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      }
+    } else if (record.status === 'PRESENT') {
+      consecutive = 0; // Reset consecutive counter
+      student.totalDaysPresent = (student.totalDaysPresent || 0) + 1;
+    } else if (record.status === 'LEAVE') {
+      student.totalDaysLeave = (student.totalDaysLeave || 0) + 1;
+    }
+
+    student.consecutiveAbsences = consecutive;
+    record.consecutiveAbsences = consecutive;
+    await student.save();
+  }
+
+  // Queue absentees for automated parent messaging
+  if (session.absentCount > 0) {
+    session.messagingStatus = 'PENDING';
+    await session.save();
+    messagingQueue.enqueueSessionAbsentees(session._id);
+  } else {
+    session.messagingStatus = 'COMPLETED';
+    await session.save();
+  }
+
+  return session;
+};
+
+// @route   POST /api/attendance/submit (Save Draft or Save & Confirm)
+router.post('/submit', protect, async (req, res, next) => {
+  try {
+    const { date, classSectionId, programId, records, academicYear, isConfirmed } = req.body;
+
+    if (!date || !classSectionId || !programId || !Array.isArray(records)) {
+      return res.status(400).json({ success: false, message: 'Invalid attendance submission payload.' });
+    }
+
+    const idempotencyKey = `${date}_${classSectionId}`;
+    let session = await AttendanceSession.findOne({ idempotencyKey });
+
+    let presentCount = 0;
+    let absentCount = 0;
+    let leaveCount = 0;
+
+    const formattedRecords = records.map((item) => {
+      if (item.status === 'PRESENT') presentCount++;
+      else if (item.status === 'ABSENT') absentCount++;
+      else if (item.status === 'LEAVE') leaveCount++;
+
+      return {
+        studentId: item.studentId,
+        rollNo: item.rollNo,
+        studentName: item.studentName,
+        parentPhone: item.parentPhone,
+        status: item.status,
+        consecutiveAbsences: item.consecutiveAbsences || 0,
+      };
+    });
+
+    if (session) {
+      session.records = formattedRecords;
+      session.presentCount = presentCount;
+      session.absentCount = absentCount;
+      session.leaveCount = leaveCount;
+      session.totalStudents = formattedRecords.length;
+      session.teacherId = req.user._id;
+    } else {
+      session = new AttendanceSession({
+        idempotencyKey,
+        date,
+        academicYear: academicYear || '2026-2027',
+        classSectionId,
+        programId,
+        teacherId: req.user._id,
+        totalStudents: formattedRecords.length,
+        presentCount,
+        absentCount,
+        leaveCount,
+        records: formattedRecords,
+        isConfirmed: false,
+        messagingStatus: 'DRAFT',
+      });
+    }
+
+    await session.save();
+
+    // If teacher explicitly confirmed the attendance
+    if (isConfirmed) {
+      session = await finalizeSessionConfirmation(session, req.user);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: session.isConfirmed
+        ? `Attendance confirmed! ${session.presentCount} Present, ${session.absentCount} Absent. Notifications queued.`
+        : 'Attendance draft saved successfully. You can review or edit before confirming.',
+      session,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/attendance/confirm/:sessionId (Explicit confirmation endpoint)
+router.post('/confirm/:sessionId', protect, async (req, res, next) => {
+  try {
+    let session = await AttendanceSession.findById(req.params.sessionId);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Attendance session not found.' });
+    }
+
+    session = await finalizeSessionConfirmation(session, req.user);
+
+    res.json({
+      success: true,
+      message: `Attendance confirmed and finalized! ${session.absentCount} absentee notifications queued for dispatch.`,
+      session,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/attendance/batch-sync (PWA Offline Background Sync)
+router.post('/batch-sync', protect, async (req, res, next) => {
+  try {
+    const { sessions } = req.body;
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      return res.status(400).json({ success: false, message: 'No offline sessions provided.' });
+    }
+
+    const syncedResults = [];
+    for (const item of sessions) {
+      const idempotencyKey = `${item.date}_${item.classSectionId}`;
+      let session = await AttendanceSession.findOne({ idempotencyKey });
+
+      let presentCount = 0;
+      let absentCount = 0;
+      let leaveCount = 0;
+
+      const formattedRecords = item.records.map((r) => {
+        if (r.status === 'PRESENT') presentCount++;
+        else if (r.status === 'ABSENT') absentCount++;
+        else if (r.status === 'LEAVE') leaveCount++;
+        return { ...r };
+      });
+
+      if (!session) {
+        session = await AttendanceSession.create({
+          idempotencyKey,
+          date: item.date,
+          academicYear: item.academicYear || '2026-2027',
+          classSectionId: item.classSectionId,
+          programId: item.programId,
+          teacherId: req.user._id,
+          totalStudents: formattedRecords.length,
+          presentCount,
+          absentCount,
+          leaveCount,
+          records: formattedRecords,
+          source: 'OFFLINE_SYNC',
+          isConfirmed: true,
+        });
+        await finalizeSessionConfirmation(session, req.user);
+      }
+      syncedResults.push(session.idempotencyKey);
+    }
+
+    res.json({
+      success: true,
+      message: `Synchronized ${syncedResults.length} offline sessions.`,
+      syncedKeys: syncedResults,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/attendance/session
+router.get('/session', protect, async (req, res, next) => {
+  try {
+    const { date, classSectionId } = req.query;
+    if (!date || !classSectionId) {
+      return res.status(400).json({ success: false, message: 'Date and classSectionId query parameters required.' });
+    }
+
+    const session = await AttendanceSession.findOne({ date, classSectionId })
+      .populate('classSectionId', 'name yearLevel section')
+      .populate('programId', 'name code')
+      .populate('teacherId', 'fullName username');
+
+    res.json({ success: true, session });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/attendance/history (Multi-faceted filter for Admin & Teachers)
+router.get('/history', protect, async (req, res, next) => {
+  try {
+    const { programId, classSectionId, date, startDate, endDate, status, onlyChronicTruants } = req.query;
+    const filter = {};
+
+    if (programId) filter.programId = programId;
+    if (classSectionId) filter.classSectionId = classSectionId;
+
+    if (date) {
+      filter.date = date;
+    } else if (startDate && endDate) {
+      filter.date = { $gte: startDate, $lte: endDate };
+    }
+
+    let sessions = await AttendanceSession.find(filter)
+      .populate('classSectionId', 'name yearLevel section')
+      .populate('programId', 'name code')
+      .populate('teacherId', 'fullName')
+      .sort({ date: -1 });
+
+    // Client-level status filtering if specified
+    if (status && status !== 'ALL') {
+      sessions = sessions.map((s) => {
+        const filteredRecords = s.records.filter((r) => r.status === status);
+        return {
+          ...s.toObject(),
+          records: filteredRecords,
+        };
+      });
+    }
+
+    if (onlyChronicTruants === 'true') {
+      sessions = sessions.map((s) => {
+        const filteredRecords = s.records.filter((r) => r.consecutiveAbsences >= 3);
+        return {
+          ...s.toObject(),
+          records: filteredRecords,
+        };
+      });
+    }
+
+    res.json({ success: true, count: sessions.length, sessions });
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;
