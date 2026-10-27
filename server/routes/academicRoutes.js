@@ -78,10 +78,14 @@ router.delete('/programs/:id', protect, authorize('admin', 'principal'), async (
     // Safety checks: ensure no classes or students depend on this program
     const classCount = await ClassSection.countDocuments({ programId });
     if (classCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete program: ${classCount} active class section(s) are linked to it. Please reassign or delete those classes first.`,
-      });
+      if (req.query.force === 'true') {
+        await ClassSection.deleteMany({ programId });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete program: ${classCount} active class section(s) are linked to it. Please reassign or delete those classes first.`,
+        });
+      }
     }
 
     const studentCount = await Student.countDocuments({ programId });
@@ -204,10 +208,14 @@ router.delete('/classes/:id', protect, authorize('admin', 'principal'), async (r
     // Safety check: check if historical attendance sessions exist
     const sessionCount = await AttendanceSession.countDocuments({ classSectionId: classId });
     if (sessionCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete class section: ${sessionCount} attendance session records exist for it. Please archive instead.`,
-      });
+      if (req.query.force === 'true') {
+        await AttendanceSession.deleteMany({ classSectionId: classId });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete class section: ${sessionCount} attendance session records exist for it. Please archive instead or confirm deletion.`,
+        });
+      }
     }
 
     const deleted = await ClassSection.findByIdAndDelete(classId);

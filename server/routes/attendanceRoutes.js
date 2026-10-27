@@ -465,4 +465,17 @@ router.get('/history', protect, async (req, res, next) => {
   }
 });
 
+// @route   DELETE /api/attendance/session/:id (Admin only)
+router.delete('/session/:id', protect, authorize('admin', 'principal'), async (req, res, next) => {
+  try {
+    const session = await AttendanceSession.findByIdAndDelete(req.params.id);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Attendance session not found.' });
+    }
+    res.json({ success: true, message: 'Attendance session deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
