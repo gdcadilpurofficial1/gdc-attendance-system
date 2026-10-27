@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {
         setUser(null);
         localStorage.removeItem('gdc_auth_user');
+        localStorage.removeItem('gdc_auth_token');
       } finally {
         setLoading(false);
       }
@@ -54,6 +55,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (response.data.success && response.data.user) {
       setUser(response.data.user);
       localStorage.setItem('gdc_auth_user', JSON.stringify(response.data.user));
+      if (response.data.token) {
+        localStorage.setItem('gdc_auth_token', response.data.token);
+      }
       return true;
     }
     return false;
@@ -67,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null);
       localStorage.removeItem('gdc_auth_user');
+      localStorage.removeItem('gdc_auth_token');
       window.location.href = '/login';
     }
   };

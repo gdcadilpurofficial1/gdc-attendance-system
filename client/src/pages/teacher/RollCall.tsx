@@ -13,6 +13,7 @@ import {
   Save,
   Check,
   ShieldAlert,
+  Search,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -70,6 +71,7 @@ export const RollCall: React.FC = () => {
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [searchFilter, setSearchFilter] = useState<string>('');
 
   // Validate current date selection
   const isDateOutOfRange = date < bounds.minDateStr || date > bounds.maxDateStr;
@@ -402,7 +404,35 @@ export const RollCall: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-2.5">
+          {/* Quick Classroom Roll Search */}
+          <div className="relative mb-2">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Find student by roll number or name..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-600 shadow-xs"
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={() => setSearchFilter('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           {records.map((record, index) => {
+            const isMatch =
+              !searchFilter ||
+              record.studentName.toLowerCase().includes(searchFilter.toLowerCase()) ||
+              record.rollNo.toLowerCase().includes(searchFilter.toLowerCase());
+
+            if (!isMatch) return null;
+
             const isPresent = record.status === 'PRESENT';
             const isAbsent = record.status === 'ABSENT';
             const isLeave = record.status === 'LEAVE';

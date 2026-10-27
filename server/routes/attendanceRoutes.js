@@ -315,26 +315,43 @@ router.get('/class-stats/:classSectionId', protect, async (req, res, next) => {
   try {
     const { classSectionId } = req.params;
 
-    // Verify teacher assignment if not admin
+    let studentFilter = { isActive: true };
+    let sessionFilter = { isConfirmed: true };
+
     if (req.user.role === 'teacher') {
       const assignedIds = (req.user.assignedClasses || []).map((c) =>
         typeof c === 'object' ? c._id.toString() : c.toString()
       );
-      if (assignedIds.length > 0 && !assignedIds.includes(classSectionId)) {
-        return res.status(403).json({ success: false, message: 'You are not assigned to this class section.' });
+
+      if (classSectionId === 'all') {
+        if (assignedIds.length > 0) {
+          studentFilter.classSectionId = { $in: assignedIds };
+          sessionFilter.classSectionId = { $in: assignedIds };
+        }
+      } else {
+        if (assignedIds.length > 0 && !assignedIds.includes(classSectionId)) {
+          return res.status(403).json({ success: false, message: 'You are not assigned to this class section.' });
+        }
+        studentFilter.classSectionId = classSectionId;
+        sessionFilter.classSectionId = classSectionId;
+      }
+    } else {
+      // Admin / Principal
+      if (classSectionId !== 'all') {
+        studentFilter.classSectionId = classSectionId;
+        sessionFilter.classSectionId = classSectionId;
       }
     }
 
-    // Retrieve active students for this class section
-    const students = await Student.find({ classSectionId, isActive: true })
+    // Retrieve active students for this class section (or all assigned)
+    const students = await Student.find(studentFilter)
+      .populate('classSectionId', 'name yearLevel section')
+      .populate('programId', 'name code')
       .sort({ rollNo: 1 })
       .lean();
 
-    // Count confirmed attendance sessions for this class
-    const totalSessions = await AttendanceSession.countDocuments({
-      classSectionId,
-      isConfirmed: true,
-    });
+    // Count confirmed attendance sessions
+    const totalSessions = await AttendanceSession.countDocuments(sessionFilter);
 
     let totalAttendancePercentageSum = 0;
     let shortageCount = 0;
@@ -366,6 +383,9 @@ router.get('/class-stats/:classSectionId', protect, async (req, res, next) => {
         fatherName: std.fatherName,
         caste: std.caste || '',
         gender: std.gender || 'Male',
+        className: std.classSectionId?.name || 'Class',
+        classSectionId: std.classSectionId?._id || std.classSectionId,
+        programCode: std.programId?.code || '',
         parentPhone: std.parentPhone,
         studentPhone: std.studentPhone || '',
         totalDaysPresent: present,

@@ -14,6 +14,8 @@ import {
   Printer,
   ShieldAlert,
   Percent,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +26,9 @@ interface StudentStatItem {
   fatherName: string;
   caste?: string;
   gender?: string;
+  className?: string;
+  classSectionId?: string;
+  programCode?: string;
   parentPhone: string;
   studentPhone?: string;
   totalDaysPresent: number;
@@ -48,7 +53,7 @@ export const ClassStudentStats: React.FC = () => {
 
   const classIdParam = searchParams.get('classId') || '';
   const [classes, setClasses] = useState<any[]>([]);
-  const [selectedClassId, setSelectedClassId] = useState<string>(classIdParam);
+  const [selectedClassId, setSelectedClassId] = useState<string>(classIdParam || 'all');
   const [currentClass, setCurrentClass] = useState<any>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -59,6 +64,10 @@ export const ClassStudentStats: React.FC = () => {
   const [search, setSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'GOOD' | 'WARNING' | 'CRITICAL' | 'CHRONIC'>('ALL');
 
+  // High-performance Pagination State (Defaults to 50 students per page)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(50);
+
   // Load classes assigned to teacher
   useEffect(() => {
     const loadTeacherClasses = async () => {
@@ -66,8 +75,8 @@ export const ClassStudentStats: React.FC = () => {
         const res = await api.get('/academic/classes');
         if (res.data.success && res.data.classes.length > 0) {
           setClasses(res.data.classes);
-          if (!selectedClassId) {
-            setSelectedClassId(res.data.classes[0]._id);
+          if (!classIdParam) {
+            setSelectedClassId('all');
           }
         }
       } catch {
@@ -75,7 +84,7 @@ export const ClassStudentStats: React.FC = () => {
       }
     };
     loadTeacherClasses();
-  }, []);
+  }, [classIdParam]);
 
   // When selectedClassId changes, fetch detailed attendance statistics
   useEffect(() => {
@@ -84,8 +93,12 @@ export const ClassStudentStats: React.FC = () => {
     const fetchClassStats = async () => {
       setLoading(true);
       try {
-        const cls = classes.find((c) => c._id === selectedClassId);
-        setCurrentClass(cls || null);
+        if (selectedClassId === 'all') {
+          setCurrentClass({ name: 'All Assigned Classes', yearLevel: 'Composite', section: 'All' });
+        } else {
+          const cls = classes.find((c) => c._id === selectedClassId);
+          setCurrentClass(cls || null);
+        }
 
         const res = await api.get(`/attendance/class-stats/${selectedClassId}`);
         if (res.data.success) {
@@ -101,6 +114,11 @@ export const ClassStudentStats: React.FC = () => {
 
     fetchClassStats();
   }, [selectedClassId, classes]);
+
+  // Reset pagination to page 1 whenever search, filter, or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, selectedClassId, pageSize]);
 
   // Filter students based on search and selected health filter
   const filteredStudents = students.filter((s) => {
@@ -120,13 +138,20 @@ export const ClassStudentStats: React.FC = () => {
     return true;
   });
 
+  // Pagination Math
+  const totalFiltered = filteredStudents.length;
+  const totalPages = pageSize === -1 ? 1 : Math.ceil(totalFiltered / pageSize) || 1;
+  const startIndex = pageSize === -1 ? 0 : (currentPage - 1) * pageSize;
+  const endIndex = pageSize === -1 ? totalFiltered : Math.min(startIndex + pageSize, totalFiltered);
+  const paginatedStudents = pageSize === -1 ? filteredStudents : filteredStudents.slice(startIndex, endIndex);
+
   const generateWhatsAppLink = (student: StudentStatItem) => {
     let phone = student.parentPhone.replace(/\D/g, '');
     if (phone.startsWith('0')) {
       phone = '92' + phone.substring(1);
     }
     const message = encodeURIComponent(
-      `Assalam-o-Alaikum,\nGovt Degree College Adilpur Official Notice:\n\nStudent: ${student.fullName} (Roll No: ${student.rollNo})\nClass: ${currentClass?.name || 'Class'}\nAttendance: ${student.percentage}% (${student.totalDaysPresent} Present / ${summary?.totalSessions || 0} Sessions)\nConsecutive Absences: ${student.consecutiveAbsences} days.\n\nBoard regulations require at least 75% attendance for examination eligibility. Please ensure regular attendance.`
+      `Assalam-o-Alaikum,\nGovt Degree College Adilpur Official Notice:\n\nStudent: ${student.fullName} (Roll No: ${student.rollNo})\nClass: ${student.className || currentClass?.name || 'Class'}\nAttendance: ${student.percentage}% (${student.totalDaysPresent} Present / ${summary?.totalSessions || 0} Sessions)\nConsecutive Absences: ${student.consecutiveAbsences} days.\n\nBoard regulations require at least 75% attendance for examination eligibility. Please ensure regular attendance.`
     );
     return `https://wa.me/${phone}?text=${message}`;
   };
@@ -138,7 +163,7 @@ export const ClassStudentStats: React.FC = () => {
         <div>
           <button
             onClick={() => navigate('/teacher')}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-indigo-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs transition mb-2"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-indigo-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs transition mb-2 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Dashboard</span>
@@ -154,15 +179,19 @@ export const ClassStudentStats: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-xs transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
           >
             <Printer className="w-4 h-4 text-slate-500" />
             <span>Print Sheet</span>
           </button>
 
           <button
-            onClick={() => navigate(`/teacher/roll-call?classId=${selectedClassId}`)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-900 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+            onClick={() =>
+              navigate(
+                `/teacher/roll-call${selectedClassId && selectedClassId !== 'all' ? `?classId=${selectedClassId}` : ''}`
+              )
+            }
+            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-900 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4 text-indigo-300" />
             <span>Take Roll Call</span>
@@ -178,13 +207,14 @@ export const ClassStudentStats: React.FC = () => {
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Assigned Class Section
+              Selected Cohort
             </label>
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="mt-0.5 bg-transparent font-black text-slate-900 text-base focus:outline-none cursor-pointer"
             >
+              <option value="all">All Assigned Classes ({classes.length} Sections)</option>
               {classes.map((cls) => (
                 <option key={cls._id} value={cls._id}>
                   {cls.name} ({cls.programId?.code || 'Class'})
@@ -214,7 +244,7 @@ export const ClassStudentStats: React.FC = () => {
               <Users className="w-4 h-4 text-indigo-600" />
             </div>
             <div className="text-2xl font-black text-slate-900">{summary.totalStudents}</div>
-            <span className="text-[10px] text-slate-500 font-medium">Active enrolled</span>
+            <span className="text-[10px] text-slate-500 font-medium">Active roster</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
@@ -261,7 +291,7 @@ export const ClassStudentStats: React.FC = () => {
       )}
 
       {/* Search & Filter Toolbar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs mb-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -277,7 +307,7 @@ export const ClassStudentStats: React.FC = () => {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs font-bold">
           <button
             onClick={() => setStatusFilter('ALL')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
               statusFilter === 'ALL'
                 ? 'bg-slate-900 text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -287,7 +317,7 @@ export const ClassStudentStats: React.FC = () => {
           </button>
           <button
             onClick={() => setStatusFilter('GOOD')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
               statusFilter === 'GOOD'
                 ? 'bg-emerald-700 text-white'
                 : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
@@ -297,7 +327,7 @@ export const ClassStudentStats: React.FC = () => {
           </button>
           <button
             onClick={() => setStatusFilter('WARNING')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
               statusFilter === 'WARNING'
                 ? 'bg-amber-600 text-white'
                 : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
@@ -307,7 +337,7 @@ export const ClassStudentStats: React.FC = () => {
           </button>
           <button
             onClick={() => setStatusFilter('CRITICAL')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
               statusFilter === 'CRITICAL'
                 ? 'bg-rose-700 text-white'
                 : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
@@ -317,7 +347,7 @@ export const ClassStudentStats: React.FC = () => {
           </button>
           <button
             onClick={() => setStatusFilter('CHRONIC')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
               statusFilter === 'CHRONIC'
                 ? 'bg-rose-900 text-white'
                 : 'bg-rose-100 text-rose-900 hover:bg-rose-200'
@@ -328,6 +358,56 @@ export const ClassStudentStats: React.FC = () => {
         </div>
       </div>
 
+      {/* Top Pagination Summary & Page Size Selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 text-xs font-semibold text-slate-500">
+        <div>
+          Showing <span className="font-bold text-slate-900">{totalFiltered === 0 ? 0 : startIndex + 1}</span> to{' '}
+          <span className="font-bold text-slate-900">{endIndex}</span> of{' '}
+          <span className="font-bold text-slate-900">{totalFiltered}</span> students
+          {totalFiltered !== students.length && ` (filtered from ${students.length})`}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 text-[11px]">
+            <span>Show:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 focus:outline-none"
+            >
+              <option value={25}>25 / page</option>
+              <option value={50}>50 / page</option>
+              <option value={100}>100 / page</option>
+              <option value={-1}>All ({totalFiltered})</option>
+            </select>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              </button>
+              <span className="px-2 text-xs font-bold text-slate-700">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Student List View */}
       {loading ? (
         <div className="space-y-3">
@@ -335,7 +415,7 @@ export const ClassStudentStats: React.FC = () => {
             <div key={n} className="bg-white rounded-2xl p-4 border border-slate-200 animate-pulse h-16" />
           ))}
         </div>
-      ) : filteredStudents.length === 0 ? (
+      ) : paginatedStudents.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300">
           <Users className="w-10 h-10 text-slate-400 mx-auto mb-2" />
           <h3 className="text-base font-bold text-slate-800">No Students Found</h3>
@@ -356,7 +436,7 @@ export const ClassStudentStats: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredStudents.map((std) => {
+                {paginatedStudents.map((std) => {
                   const isEligible = std.percentage >= 75.0;
                   const isWarning = std.percentage >= 60.0 && std.percentage < 75.0;
                   const isChronic = std.consecutiveAbsences >= 3;
@@ -376,6 +456,11 @@ export const ClassStudentStats: React.FC = () => {
                           <span className="text-[11px] text-slate-500">
                             s/o {std.fatherName} {std.caste && `(${std.caste})`}
                           </span>
+                          {selectedClassId === 'all' && std.className && (
+                            <span className="inline-block mt-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded w-max">
+                              {std.className}
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -443,7 +528,7 @@ export const ClassStudentStats: React.FC = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             title="Send WhatsApp Notice"
-                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
+                            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition"
                           >
                             <MessageCircle className="w-4 h-4" />
                           </a>
@@ -451,7 +536,7 @@ export const ClassStudentStats: React.FC = () => {
                           <a
                             href={`tel:${std.parentPhone}`}
                             title="Call Parent"
-                            className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition"
+                            className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition"
                           >
                             <Phone className="w-4 h-4" />
                           </a>
@@ -464,6 +549,58 @@ export const ClassStudentStats: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Bottom Pagination Controls Bar */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
+              <span className="text-xs text-slate-500 font-semibold">
+                Page <span className="font-bold text-slate-900">{currentPage}</span> of{' '}
+                <span className="font-bold text-slate-900">{totalPages}</span> ({totalFiltered} total students)
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (totalPages > 5 && currentPage > 3) {
+                      pageNum = Math.min(currentPage - 2 + i, totalPages);
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          currentPage === pageNum
+                            ? 'bg-indigo-900 text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
