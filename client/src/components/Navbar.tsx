@@ -137,6 +137,17 @@ export const Navbar: React.FC = () => {
                   <ClipboardCheck className="w-4 h-4 text-emerald-600" />
                   Mark Attendance
                 </Link>
+                <Link
+                  to="/teacher/stats"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                    isActive('/teacher/stats')
+                      ? 'bg-indigo-50 text-indigo-900 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  Student Stats
+                </Link>
               </>
             )}
           </nav>
@@ -193,6 +204,9 @@ export const Navbar: React.FC = () => {
             </Link>
             <Link to="/teacher/roll-call" className={isActive('/teacher/roll-call') ? 'text-indigo-900 font-bold' : ''}>
               Mark Roll Call
+            </Link>
+            <Link to="/teacher/stats" className={isActive('/teacher/stats') ? 'text-indigo-900 font-bold' : ''}>
+              Student Stats
             </Link>
           </>
         )}

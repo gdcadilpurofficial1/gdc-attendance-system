@@ -7,6 +7,66 @@ import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
+/**
+ * Validates attendance date range for teachers:
+ * - Allowed past: Maximum 1 day ago (Yesterday). Anything older is forbidden.
+ * - Allowed future: Current week upcoming days only (up to Sunday). Next week and beyond is forbidden.
+ * - Admins and Principals bypass these restrictions for administrative corrections.
+ */
+export const validateAttendanceDateForUser = (dateStr, userRole) => {
+  if (userRole === 'admin' || userRole === 'principal') {
+    return { valid: true };
+  }
+
+  if (!dateStr) {
+    return { valid: false, message: 'Attendance date is required.' };
+  }
+
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) {
+    return { valid: false, message: 'Invalid date format. Expected YYYY-MM-DD.' };
+  }
+
+  const [tYear, tMonth, tDay] = parts.map(Number);
+  const targetDate = new Date(Date.UTC(tYear, tMonth - 1, tDay));
+
+  // Current date in PKT (UTC + 5)
+  const now = new Date();
+  const pktOffsetMinutes = 5 * 60;
+  const currentPktMillis = now.getTime() + (pktOffsetMinutes + now.getTimezoneOffset()) * 60000;
+  const pktDate = new Date(currentPktMillis);
+  const todayDate = new Date(Date.UTC(pktDate.getFullYear(), pktDate.getMonth(), pktDate.getDate()));
+
+  // Yesterday (1 day before today in PKT)
+  const yesterdayDate = new Date(todayDate);
+  yesterdayDate.setUTCDate(todayDate.getUTCDate() - 1);
+
+  // Check 1: Past boundary (cannot be older than yesterday)
+  if (targetDate < yesterdayDate) {
+    return {
+      valid: false,
+      message:
+        'Faculty Policy Restriction: Teachers cannot record or edit attendance older than yesterday. For older corrections, contact College Administration.',
+    };
+  }
+
+  // Check 2: Future boundary (cannot be next week; only up to Sunday of current week)
+  const dayOfWeek = todayDate.getUTCDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+  const endOfWeekDate = new Date(todayDate);
+  endOfWeekDate.setUTCDate(todayDate.getUTCDate() + daysUntilSunday);
+
+  if (targetDate > endOfWeekDate) {
+    return {
+      valid: false,
+      message:
+        'Faculty Policy Restriction: Teachers cannot create attendance sessions for next week. You can only record for today and upcoming days of the current week.',
+    };
+  }
+
+  return { valid: true };
+};
+
 // Helper to calculate consecutive absences and apply confirmation triggers
 const finalizeSessionConfirmation = async (session, user) => {
   session.isConfirmed = true;
@@ -70,6 +130,12 @@ router.post('/submit', protect, async (req, res, next) => {
 
     if (!date || !classSectionId || !programId || !Array.isArray(records)) {
       return res.status(400).json({ success: false, message: 'Invalid attendance submission payload.' });
+    }
+
+    // Enforce date policy for teachers
+    const dateValidation = validateAttendanceDateForUser(date, req.user.role);
+    if (!dateValidation.valid) {
+      return res.status(403).json({ success: false, message: dateValidation.message });
     }
 
     const idempotencyKey = `${date}_${classSectionId}`;
@@ -146,6 +212,12 @@ router.post('/confirm/:sessionId', protect, async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Attendance session not found.' });
     }
 
+    // Enforce date policy for teachers
+    const dateValidation = validateAttendanceDateForUser(session.date, req.user.role);
+    if (!dateValidation.valid) {
+      return res.status(403).json({ success: false, message: dateValidation.message });
+    }
+
     session = await finalizeSessionConfirmation(session, req.user);
 
     res.json({
@@ -168,6 +240,12 @@ router.post('/batch-sync', protect, async (req, res, next) => {
 
     const syncedResults = [];
     for (const item of sessions) {
+      // Validate date for teacher role
+      const dateValidation = validateAttendanceDateForUser(item.date, req.user.role);
+      if (!dateValidation.valid) {
+        continue; // Skip out-of-bounds offline sessions
+      }
+
       const idempotencyKey = `${item.date}_${item.classSectionId}`;
       let session = await AttendanceSession.findOne({ idempotencyKey });
 
@@ -227,6 +305,93 @@ router.get('/session', protect, async (req, res, next) => {
       .populate('teacherId', 'fullName username');
 
     res.json({ success: true, session });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/attendance/class-stats/:classSectionId (Detailed Student Attendance Breakdown for Teachers & Admin)
+router.get('/class-stats/:classSectionId', protect, async (req, res, next) => {
+  try {
+    const { classSectionId } = req.params;
+
+    // Verify teacher assignment if not admin
+    if (req.user.role === 'teacher') {
+      const assignedIds = (req.user.assignedClasses || []).map((c) =>
+        typeof c === 'object' ? c._id.toString() : c.toString()
+      );
+      if (assignedIds.length > 0 && !assignedIds.includes(classSectionId)) {
+        return res.status(403).json({ success: false, message: 'You are not assigned to this class section.' });
+      }
+    }
+
+    // Retrieve active students for this class section
+    const students = await Student.find({ classSectionId, isActive: true })
+      .sort({ rollNo: 1 })
+      .lean();
+
+    // Count confirmed attendance sessions for this class
+    const totalSessions = await AttendanceSession.countDocuments({
+      classSectionId,
+      isConfirmed: true,
+    });
+
+    let totalAttendancePercentageSum = 0;
+    let shortageCount = 0;
+    let chronicTruantsCount = 0;
+
+    const studentStats = students.map((std) => {
+      const present = std.totalDaysPresent || 0;
+      const absent = std.totalDaysAbsent || 0;
+      const leave = std.totalDaysLeave || 0;
+      const studentTotalDays = present + absent + leave;
+
+      // Base percentage calculation on total class sessions if > 0, else student's marked days
+      const sessionBase = totalSessions > 0 ? totalSessions : studentTotalDays;
+      const percentage = sessionBase > 0 ? Number(((present / sessionBase) * 100).toFixed(1)) : 100.0;
+
+      totalAttendancePercentageSum += percentage;
+
+      if (percentage < 75.0) shortageCount++;
+      if ((std.consecutiveAbsences || 0) >= 3) chronicTruantsCount++;
+
+      let bracket = 'GOOD'; // >= 75%
+      if (percentage < 60.0) bracket = 'CRITICAL';
+      else if (percentage < 75.0) bracket = 'WARNING';
+
+      return {
+        _id: std._id,
+        rollNo: std.rollNo,
+        fullName: std.fullName,
+        fatherName: std.fatherName,
+        caste: std.caste || '',
+        gender: std.gender || 'Male',
+        parentPhone: std.parentPhone,
+        studentPhone: std.studentPhone || '',
+        totalDaysPresent: present,
+        totalDaysAbsent: absent,
+        totalDaysLeave: leave,
+        consecutiveAbsences: std.consecutiveAbsences || 0,
+        percentage,
+        bracket,
+      };
+    });
+
+    const avgAttendance =
+      students.length > 0 ? Number((totalAttendancePercentageSum / students.length).toFixed(1)) : 0;
+
+    res.json({
+      success: true,
+      classSectionId,
+      summary: {
+        totalStudents: students.length,
+        totalSessions,
+        avgAttendance,
+        shortageCount,
+        chronicTruantsCount,
+      },
+      students: studentStats,
+    });
   } catch (error) {
     next(error);
   }

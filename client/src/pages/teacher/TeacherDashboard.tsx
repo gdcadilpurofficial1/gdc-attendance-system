@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/client';
 import { db } from '../../offline/db';
 import { cacheRostersForOffline } from '../../offline/syncEngine';
-import { GraduationCap, Calendar, ArrowRight, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { GraduationCap, Calendar, ArrowRight, CheckCircle2, Clock, Sparkles, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const TeacherDashboard: React.FC = () => {
@@ -186,9 +186,23 @@ export const TeacherDashboard: React.FC = () => {
                   )}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-900">
-                  <span>{isConfirmed ? 'View / Edit Attendance' : 'Open Roll Call'}</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/teacher/stats?classId=${cls._id}`);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-indigo-900 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition"
+                  >
+                    <Users className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Student Stats</span>
+                  </button>
+
+                  <div className="flex items-center gap-1 text-xs font-bold text-indigo-900 group-hover:text-indigo-700">
+                    <span>{isConfirmed ? 'Edit Session' : 'Take Roll Call'}</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+                  </div>
                 </div>
               </div>
             );

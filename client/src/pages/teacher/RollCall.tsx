@@ -31,17 +31,48 @@ export const RollCall: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // Date Boundaries: Past max 1 day (yesterday); Future max end of current week (Sunday)
+  const bounds = React.useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(today.getDate() + daysUntilSunday);
+
+    const formatYMD = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      todayStr: formatYMD(today),
+      yesterdayStr: formatYMD(yesterday),
+      minDateStr: formatYMD(yesterday),
+      maxDateStr: formatYMD(endOfWeek),
+    };
+  }, []);
+
   const classIdParam = searchParams.get('classId') || '';
   const [selectedClassId, setSelectedClassId] = useState<string>(classIdParam);
   const [classes, setClasses] = useState<any[]>([]);
   const [currentClass, setCurrentClass] = useState<any>(null);
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(bounds.todayStr);
 
   const [records, setRecords] = useState<StudentAttendanceItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  // Validate current date selection
+  const isDateOutOfRange = date < bounds.minDateStr || date > bounds.maxDateStr;
 
   // Load available classes
   useEffect(() => {
@@ -156,6 +187,13 @@ export const RollCall: React.FC = () => {
   const handleSave = async (confirmNow: boolean) => {
     if (!selectedClassId || records.length === 0) return;
 
+    if (isDateOutOfRange) {
+      toast.error(
+        'Faculty Policy: Teachers can only record or edit attendance for yesterday, today, or current week days. Older records require Admin assistance.'
+      );
+      return;
+    }
+
     setSubmitting(true);
     const payload = {
       date,
@@ -245,16 +283,75 @@ export const RollCall: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-              Attendance Date
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                Attendance Date
+              </label>
+              <div className="flex items-center gap-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setDate(bounds.todayStr)}
+                  className={`px-2 py-0.5 rounded-md font-bold transition ${
+                    date === bounds.todayStr
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDate(bounds.yesterdayStr)}
+                  className={`px-2 py-0.5 rounded-md font-bold transition ${
+                    date === bounds.yesterdayStr
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Yesterday
+                </button>
+              </div>
+            </div>
             <input
               type="date"
               value={date}
+              min={bounds.minDateStr}
+              max={bounds.maxDateStr}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 ${
+                isDateOutOfRange
+                  ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/50'
+                  : 'border-slate-200 focus:ring-indigo-600'
+              }`}
             />
           </div>
+        </div>
+
+        {/* Date Policy Context Banner */}
+        <div className="mt-3">
+          {date === bounds.yesterdayStr ? (
+            <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>Editing Yesterday's Attendance: You can review and update this session.</span>
+            </div>
+          ) : date === bounds.todayStr ? (
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Today's Official Roll Call: Ready to record student presence.</span>
+            </div>
+          ) : isDateOutOfRange ? (
+            <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-semibold flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>
+                Date Restricted: Faculty policy allows only yesterday, today, and current week days. Older records require Admin modification.
+              </span>
+            </div>
+          ) : (
+            <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>Scheduled Current Week Session: Permitted within current week schedule.</span>
+            </div>
+          )}
         </div>
 
         {/* Quick Summary Pill Bar */}
@@ -392,8 +489,12 @@ export const RollCall: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleSave(false)}
-              disabled={submitting}
-              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition cursor-pointer"
+              disabled={submitting || isDateOutOfRange}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition ${
+                isDateOutOfRange
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer'
+              }`}
             >
               <Save className="w-4 h-4 text-slate-500" />
               <span>Save Draft</span>
@@ -401,8 +502,12 @@ export const RollCall: React.FC = () => {
 
             <button
               onClick={() => setShowConfirmModal(true)}
-              disabled={submitting}
-              className="px-5 py-2.5 rounded-xl font-bold text-xs bg-indigo-900 hover:bg-indigo-800 text-white shadow-md flex items-center gap-1.5 transition cursor-pointer"
+              disabled={submitting || isDateOutOfRange}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md flex items-center gap-1.5 transition ${
+                isDateOutOfRange
+                  ? 'bg-indigo-300 text-white cursor-not-allowed'
+                  : 'bg-indigo-900 hover:bg-indigo-800 text-white cursor-pointer'
+              }`}
             >
               <Send className="w-4 h-4 text-indigo-300" />
               <span>Confirm & Finalize</span>

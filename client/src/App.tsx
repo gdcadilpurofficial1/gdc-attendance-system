@@ -13,6 +13,9 @@ const TeacherDashboard = lazy(() =>
 const RollCall = lazy(() =>
   import('./pages/teacher/RollCall').then((m) => ({ default: m.RollCall }))
 );
+const ClassStudentStats = lazy(() =>
+  import('./pages/teacher/ClassStudentStats').then((m) => ({ default: m.ClassStudentStats }))
+);
 const AdminDashboard = lazy(() =>
   import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
 );
@@ -64,6 +67,7 @@ export const AppContent: React.FC = () => {
               {/* Teacher Routes */}
               <Route path="/teacher" element={<TeacherDashboard />} />
               <Route path="/teacher/roll-call" element={<RollCall />} />
+              <Route path="/teacher/stats" element={<ClassStudentStats />} />
             </Route>
 
             {/* Admin & Principal Guarded Routes */}
