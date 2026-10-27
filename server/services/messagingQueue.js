@@ -39,8 +39,43 @@ class MessagingQueue {
       const className = session.classSectionId?.name || 'Class';
       const todayDate = session.date;
 
+      // Determine active channel: WhatsApp, SMS Gateway, or Both
+      let activeChannel = config.defaultChannel || 'WHATSAPP';
+      const hasWhatsApp = Boolean(config.whatsappLinked);
+      const hasSms = Boolean(config.smsGatewayApiKey);
+
+      if (hasWhatsApp && !hasSms) {
+        activeChannel = 'WHATSAPP';
+      } else if (!hasWhatsApp && hasSms) {
+        activeChannel = 'SMS_GATEWAY';
+      } else if (hasWhatsApp && hasSms) {
+        activeChannel = config.defaultChannel || 'WHATSAPP';
+      }
+
+      let enqueuedCount = 0;
+      let duplicateSkippedCount = 0;
+
       for (const record of absentees) {
-        // Build template
+        // 🚨 DAILY DEDUPLICATION CHECK:
+        // Ensure no student receives duplicate absentee notices on the same date
+        const todayStart = new Date(todayDate + 'T00:00:00.000Z');
+        const todayEnd = new Date(todayDate + 'T23:59:59.999Z');
+
+        const existingNotificationToday = await MessageLog.findOne({
+          studentId: record.studentId,
+          createdAt: { $gte: todayStart, $lte: todayEnd },
+          status: { $in: ['QUEUED', 'SENDING', 'SENT'] },
+        });
+
+        if (existingNotificationToday) {
+          console.log(
+            `ℹ️ [DEDUP] Already notified parent of Roll #${record.rollNo} (${record.studentName}) today. Skipping duplicate.`
+          );
+          duplicateSkippedCount++;
+          continue;
+        }
+
+        // Build personalized template
         const messageText = config.messageTemplate
           .replace('{STUDENT_NAME}', record.studentName)
           .replace('{ROLL_NO}', record.rollNo)
@@ -55,14 +90,17 @@ class MessagingQueue {
           rollNo: record.rollNo,
           classSectionName: className,
           messageText,
-          channel: config.defaultChannel,
+          channel: activeChannel,
           status: 'QUEUED',
         });
 
         this.queue.push(log._id.toString());
+        enqueuedCount++;
       }
 
-      console.log(`📥 Enqueued ${absentees.length} absentee messages for session ${sessionId}`);
+      console.log(
+        `📥 Enqueued ${enqueuedCount} absentee messages (Skipped ${duplicateSkippedCount} duplicates) for session ${sessionId}`
+      );
 
       // Trigger runner if not already running
       if (!this.isProcessing) {

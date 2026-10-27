@@ -8,6 +8,7 @@ import {
   Copy,
   Sliders,
   Unlink,
+  MessageCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -131,6 +132,32 @@ export const MessagingHub: React.FC = () => {
           <span>Refresh Queue</span>
         </button>
       </div>
+
+      {/* Gateway Connection Advisory Alert */}
+      {!config?.whatsappLinked && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <QrCode className="w-5 h-5 text-amber-700" />
+            </div>
+            <div>
+              <h3 className="font-bold text-amber-950 text-sm">
+                WhatsApp Gateway Not Linked
+              </h3>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Scan the QR code below using the college office smartphone, or configure the Android SIM SMS Gateway so queued absentee alerts dispatch automatically.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleGenerateQr}
+            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+          >
+            <QrCode className="w-4 h-4" />
+            <span>Connect WhatsApp Now</span>
+          </button>
+        </div>
+      )}
 
       {/* Live Dispatch Queue Status Bar */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs mb-8">
@@ -392,39 +419,66 @@ export const MessagingHub: React.FC = () => {
                 <th className="py-3 px-4">Parent Phone</th>
                 <th className="py-3 px-4">Channel</th>
                 <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-center">Action</th>
                 <th className="py-3 px-4 text-right">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-              {logs.map((log) => (
-                <tr key={log._id} className="hover:bg-slate-50">
-                  <td className="py-3 px-4 font-bold text-slate-900">{log.studentName}</td>
-                  <td className="py-3 px-4">{log.rollNo}</td>
-                  <td className="py-3 px-4 text-slate-600">{log.classSectionName}</td>
-                  <td className="py-3 px-4 text-indigo-700 font-semibold">{log.recipientPhone}</td>
-                  <td className="py-3 px-4">
-                    <span className="text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded">{log.channel}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                        log.status === 'SENT'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : log.status === 'SENDING'
-                          ? 'bg-indigo-100 text-indigo-800'
-                          : log.status === 'FAILED'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {log.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right text-slate-400">
-                    {new Date(log.createdAt).toLocaleTimeString()}
-                  </td>
-                </tr>
-              ))}
+              {logs.map((log) => {
+                let cleanPhone = (log.recipientPhone || '').replace(/\D/g, '');
+                if (cleanPhone.startsWith('0')) cleanPhone = '92' + cleanPhone.substring(1);
+                const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(log.messageText || '')}`;
+
+                return (
+                  <tr key={log._id} className="hover:bg-slate-50">
+                    <td className="py-3 px-4 font-bold text-slate-900">{log.studentName}</td>
+                    <td className="py-3 px-4">{log.rollNo}</td>
+                    <td className="py-3 px-4 text-slate-600">{log.classSectionName}</td>
+                    <td className="py-3 px-4 text-indigo-700 font-semibold">{log.recipientPhone}</td>
+                    <td className="py-3 px-4">
+                      <span className="text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded">{log.channel}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                          log.status === 'SENT'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : log.status === 'SENDING'
+                            ? 'bg-indigo-100 text-indigo-800'
+                            : log.status === 'FAILED'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {log.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open in WhatsApp Web"
+                          className="p-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </a>
+                        <button
+                          onClick={() => copyToClipboard(log.messageText || '')}
+                          title="Copy Message Text"
+                          className="p-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-400">
+                      {new Date(log.createdAt).toLocaleTimeString()}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
