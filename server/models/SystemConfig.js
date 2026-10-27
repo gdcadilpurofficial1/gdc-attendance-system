@@ -40,7 +40,7 @@ const systemConfigSchema = new mongoose.Schema(
     messageTemplate: {
       type: String,
       default:
-        'Mohtaram Walid, apka farzand {STUDENT_NAME}, Roll No. {ROLL_NO}, Class {CLASS_NAME} aj {DATE} Govt Degree College Adilpur se ghair-hazir (absent) hai. Baraye meharbani haziri yaqeeni banayein. Principal, GDC Adilpur.',
+        'Mohtaram {FATHER_NAME}, {RELATION} {STUDENT_NAME}, Roll No. {ROLL_NO}, Class {CLASS_NAME} aj {DATE} Govt Degree College Adilpur se ghair-hazir (absent) hai. Baraye meharbani haziri yaqeeni banayein. Principal, GDC Adilpur.',
     },
   },
   {

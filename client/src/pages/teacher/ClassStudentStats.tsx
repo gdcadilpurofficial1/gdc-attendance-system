@@ -150,8 +150,15 @@ export const ClassStudentStats: React.FC = () => {
     if (phone.startsWith('0')) {
       phone = '92' + phone.substring(1);
     }
+    const isFemale = student.gender === 'Female';
+    const relation = isFemale ? 'apki dukhtar' : 'apka farzand';
+    const fatherGreeting = student.fatherName ? `Mohtaram ${student.fatherName}` : 'Mohtaram Walid';
+    const todayStr = new Date().toISOString().split('T')[0];
+
     const message = encodeURIComponent(
-      `Assalam-o-Alaikum,\nGovt Degree College Adilpur Official Notice:\n\nStudent: ${student.fullName} (Roll No: ${student.rollNo})\nClass: ${student.className || currentClass?.name || 'Class'}\nAttendance: ${student.percentage}% (${student.totalDaysPresent} Present / ${summary?.totalSessions || 0} Sessions)\nConsecutive Absences: ${student.consecutiveAbsences} days.\n\nBoard regulations require at least 75% attendance for examination eligibility. Please ensure regular attendance.`
+      `${fatherGreeting}, ${relation} ${student.fullName}, Roll No. ${student.rollNo}, Class ${
+        student.className || currentClass?.name || 'Class'
+      } aj ${todayStr} Govt Degree College Adilpur se ghair-hazir (absent) hai. Baraye meharbani haziri yaqeeni banayein. Principal, GDC Adilpur.`
     );
     return `https://wa.me/${phone}?text=${message}`;
   };

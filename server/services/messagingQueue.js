@@ -1,6 +1,8 @@
 import MessageLog from '../models/MessageLog.js';
 import SystemConfig from '../models/SystemConfig.js';
 import AttendanceSession from '../models/AttendanceSession.js';
+import Student from '../models/Student.js';
+import { sendWhatsAppMessage, isWhatsAppConnected } from './whatsappService.js';
 
 class MessagingQueue {
   constructor() {
@@ -75,12 +77,28 @@ class MessagingQueue {
           continue;
         }
 
-        // Build personalized template
-        const messageText = config.messageTemplate
-          .replace('{STUDENT_NAME}', record.studentName)
-          .replace('{ROLL_NO}', record.rollNo)
-          .replace('{CLASS_NAME}', className)
-          .replace('{DATE}', todayDate);
+        // Retrieve student's fatherName and gender
+        const student = await Student.findById(record.studentId).select('fatherName gender');
+        const fatherName = student?.fatherName || 'Walid';
+        const isFemale = student?.gender === 'Female';
+        const relation = isFemale ? 'apki dukhtar' : 'apka farzand';
+
+        // Build personalized template with father name and gender-based son/daughter relation
+        let messageText = (config.messageTemplate || '')
+          .replace(/{FATHER_NAME}/g, fatherName)
+          .replace(/{RELATION}/g, relation)
+          .replace(/{STUDENT_NAME}/g, record.studentName)
+          .replace(/{ROLL_NO}/g, record.rollNo)
+          .replace(/{CLASS_NAME}/g, className)
+          .replace(/{DATE}/g, todayDate);
+
+        // Auto-adapt if template contains legacy "Mohtaram Walid" or static "apka farzand"
+        if (messageText.includes('Mohtaram Walid')) {
+          messageText = messageText.replace(/Mohtaram Walid/g, `Mohtaram ${fatherName}`);
+        }
+        if (isFemale && messageText.includes('apka farzand')) {
+          messageText = messageText.replace(/apka farzand/g, 'apki dukhtar');
+        }
 
         // Create MessageLog entry
         const log = await MessageLog.create({
@@ -140,10 +158,29 @@ class MessagingQueue {
           `🚀 [DISPATCH] Sending to ${log.studentName} (${log.recipientPhone}) via ${log.channel}. Queue remaining: ${this.queue.length}`
         );
 
-        // Simulation or WhatsApp/SMS dispatch
-        // In Android SMS Gateway mode, the phone polls queued messages or we mark it SENT
-        log.status = 'SENT';
-        log.sentAt = new Date();
+        // Dispatch via WhatsApp or SMS Gateway
+        if (log.channel === 'WHATSAPP') {
+          if (isWhatsAppConnected()) {
+            try {
+              await sendWhatsAppMessage(log.recipientPhone, log.messageText);
+              log.status = 'SENT';
+              log.sentAt = new Date();
+              console.log(`✅ [WHATSAPP] Delivered absentee alert to ${log.recipientPhone} (${log.studentName})`);
+            } catch (waErr) {
+              console.error(`❌ [WHATSAPP] Failed to send to ${log.recipientPhone}:`, waErr.message);
+              log.status = 'FAILED';
+              log.errorMessage = waErr.message;
+            }
+          } else {
+            console.warn(`⚠️ [WHATSAPP] Device is not linked. Absentees remain available for 1-click manual dispatch.`);
+            log.status = 'FAILED';
+            log.errorMessage = 'WhatsApp bot not linked. Use 1-Click WhatsApp or connect phone in Messaging Hub.';
+          }
+        } else {
+          // Android SMS Gateway or local SIM mode
+          log.status = 'SENT';
+          log.sentAt = new Date();
+        }
         await log.save();
 
         // Safe pacing throttle (18s) to prevent Telco SIM or WhatsApp ban

@@ -34,6 +34,28 @@ export const MessagingHub: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-detect when phone scans QR and closes modal
+  useEffect(() => {
+    let qrPollInterval: ReturnType<typeof setInterval> | null = null;
+    if (qrModal) {
+      qrPollInterval = setInterval(async () => {
+        try {
+          const res = await api.get('/messaging/status');
+          if (res.data.success && res.data.config.whatsappLinked) {
+            toast.success('🎉 WhatsApp connected successfully!');
+            setStatusData(res.data);
+            setQrModal(false);
+          }
+        } catch {
+          // ignore
+        }
+      }, 3000);
+    }
+    return () => {
+      if (qrPollInterval) clearInterval(qrPollInterval);
+    };
+  }, [qrModal]);
+
   const loadStatus = async () => {
     try {
       const res = await api.get('/messaging/status');
@@ -83,13 +105,30 @@ export const MessagingHub: React.FC = () => {
     try {
       const res = await api.post('/messaging/whatsapp/generate-qr');
       if (res.data.success) {
+        if (res.data.isConnected) {
+          toast.success('WhatsApp is already connected!');
+          setQrModal(false);
+          loadStatus();
+          return;
+        }
         setQrImage(res.data.qrImage);
       }
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to generate WhatsApp QR code.');
     } finally {
       setLoadingQr(false);
     }
+  };
+
+  const handleResetDefaultTemplate = () => {
+    const defaultTpl =
+      'Mohtaram {FATHER_NAME}, {RELATION} {STUDENT_NAME}, Roll No. {ROLL_NO}, Class {CLASS_NAME} aj {DATE} Govt Degree College Adilpur se ghair-hazir (absent) hai. Baraye meharbani haziri yaqeeni banayein. Principal, GDC Adilpur.';
+    setTemplate(defaultTpl);
+    toast.success('Reset template to standard format.');
+  };
+
+  const insertVariable = (varName: string) => {
+    setTemplate((prev) => (prev ? `${prev} ${varName}` : varName));
   };
 
   const handleUnlinkWhatsApp = async () => {
@@ -240,7 +279,7 @@ export const MessagingHub: React.FC = () => {
               </span>
               <p>1. Tap "Unlink Device" below to clear old session.</p>
               <p>2. Tap "Link New WhatsApp" to view fresh QR code.</p>
-              <p>3. Open WhatsApp on new phone $\rightarrow$ Linked Devices $\rightarrow$ Scan QR. Done!</p>
+              <p>3. Open WhatsApp on new phone ➡️ Linked Devices ➡️ Scan QR. Done!</p>
             </div>
           </div>
 
@@ -380,16 +419,55 @@ export const MessagingHub: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4">
-          <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-            Parent Message Template (Variables: {'{STUDENT_NAME}'}, {'{ROLL_NO}'}, {'{CLASS_NAME}'}, {'{DATE}'})
-          </label>
+        <div className="mt-5 pt-4 border-t border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase">
+              Parent Notification Template
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetDefaultTemplate}
+                className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition"
+              >
+                Reset Standard Template
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 mb-2.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase py-1">Insert Tags:</span>
+            {[
+              { tag: '{FATHER_NAME}', desc: "Father's name" },
+              { tag: '{RELATION}', desc: "'apka farzand' / 'apki dukhtar'" },
+              { tag: '{STUDENT_NAME}', desc: 'Student Name' },
+              { tag: '{ROLL_NO}', desc: 'Roll No.' },
+              { tag: '{CLASS_NAME}', desc: 'Class & Section' },
+              { tag: '{DATE}', desc: 'Attendance Date' },
+            ].map((item) => (
+              <button
+                key={item.tag}
+                type="button"
+                onClick={() => insertVariable(item.tag)}
+                title={`Inserts ${item.desc}`}
+                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[11px] font-mono font-medium transition cursor-pointer"
+              >
+                {item.tag}
+              </button>
+            ))}
+          </div>
+
           <textarea
             value={template}
             onChange={(e) => setTemplate(e.target.value)}
-            rows={2}
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
+            rows={3}
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
+
+          <p className="text-[11px] text-slate-500 mt-1.5">
+            💡 <strong>Smart Gender Handling:</strong> The <code>{'{RELATION}'}</code> tag automatically translates to{' '}
+            <strong>"apka farzand"</strong> for male students and <strong>"apki dukhtar"</strong> for female students.
+          </p>
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -489,25 +567,45 @@ export const MessagingHub: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 text-center">
             <h3 className="text-lg font-black text-slate-900 tracking-tight">Scan WhatsApp QR Code</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-6">
-              Open WhatsApp on the college phone $\rightarrow$ Linked Devices $\rightarrow$ Link a Device.
+            <p className="text-xs text-slate-500 mt-1 mb-4">
+              Open WhatsApp on the college phone ➡️ Linked Devices ➡️ Link a Device.
             </p>
 
             {loadingQr ? (
-              <div className="w-48 h-48 mx-auto flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-200">
-                <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-56 h-56 mx-auto flex flex-col items-center justify-center bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mb-2" />
+                <span className="text-[11px] text-slate-400 font-medium">Generating WhatsApp Handshake...</span>
               </div>
             ) : qrImage ? (
-              <div className="w-56 h-56 mx-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-md">
-                <img src={qrImage} alt="WhatsApp QR Code" className="w-full h-full object-contain" />
+              <div className="space-y-3">
+                <div className="w-56 h-56 mx-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-md">
+                  <img src={qrImage} alt="WhatsApp QR Code" className="w-full h-full object-contain" />
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    onClick={handleGenerateQr}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Refresh QR Code</span>
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="text-xs text-rose-600 font-bold">Failed to generate QR code.</div>
+              <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200 text-xs text-rose-700 font-semibold">
+                Failed to generate WhatsApp QR code.
+                <button
+                  onClick={handleGenerateQr}
+                  className="mt-2 block mx-auto px-3 py-1 bg-rose-700 text-white rounded-lg text-xs"
+                >
+                  Retry
+                </button>
+              </div>
             )}
 
             <button
               onClick={() => setQrModal(false)}
-              className="mt-6 w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs"
+              className="mt-6 w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
             >
               Done / Close
             </button>

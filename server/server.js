@@ -21,6 +21,7 @@ import reportRoutes from './routes/reportRoutes.js';
 
 import { startKeepAlive } from './utils/keepAlive.js';
 import { initRetentionScheduler } from './services/retentionService.js';
+import { initWhatsAppIfSessionExists } from './services/whatsappService.js';
 
 dotenv.config();
 
@@ -108,6 +109,9 @@ app.listen(PORT, () => {
 
   // Initialize 2-year retention scheduler
   initRetentionScheduler();
+
+  // Auto-reconnect WhatsApp if previously authenticated session exists
+  initWhatsAppIfSessionExists();
 });
 
 export default app;

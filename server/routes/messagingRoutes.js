@@ -1,9 +1,13 @@
 import express from 'express';
-import QRCode from 'qrcode';
 import SystemConfig from '../models/SystemConfig.js';
 import MessageLog from '../models/MessageLog.js';
 import messagingQueue from '../services/messagingQueue.js';
 import { protect, authorize } from '../middleware/auth.js';
+import {
+  getLatestWhatsAppQr,
+  unlinkWhatsAppDevice,
+  isWhatsAppConnected,
+} from '../services/whatsappService.js';
 
 const router = express.Router();
 
@@ -19,6 +23,7 @@ router.get('/status', protect, async (req, res, next) => {
 
     const sentToday = await MessageLog.countDocuments({ status: 'SENT', createdAt: { $gte: today } });
     const failedToday = await MessageLog.countDocuments({ status: 'FAILED', createdAt: { $gte: today } });
+    const isConnected = isWhatsAppConnected();
 
     res.json({
       success: true,
@@ -27,7 +32,7 @@ router.get('/status', protect, async (req, res, next) => {
         autoSendOnSubmit: config.autoSendOnSubmit,
         dispatchIntervalSeconds: config.dispatchIntervalSeconds,
         defaultChannel: config.defaultChannel,
-        whatsappLinked: config.whatsappLinked,
+        whatsappLinked: Boolean(config.whatsappLinked || isConnected),
         whatsappPhone: config.whatsappPhone,
         smsGatewayApiKey: config.smsGatewayApiKey,
         messageTemplate: config.messageTemplate,
@@ -74,21 +79,16 @@ router.get('/logs', protect, async (req, res, next) => {
   }
 });
 
-// @route   POST /api/messaging/whatsapp/generate-qr (Admin only - Link device)
+// @route   POST /api/messaging/whatsapp/generate-qr (Admin only - Link device with genuine Baileys handshake)
 router.post('/whatsapp/generate-qr', protect, authorize('admin', 'principal'), async (req, res, next) => {
   try {
-    // Generate a secure connection token payload
-    const mockSessionCode = `GDC-WA-PAIR-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-    const qrImage = await QRCode.toDataURL(mockSessionCode);
-
-    let config = (await SystemConfig.findOne()) || (await SystemConfig.create({}));
-    config.whatsappQrCode = qrImage;
-    await config.save();
+    const qrResult = await getLatestWhatsAppQr();
 
     res.json({
       success: true,
-      qrImage,
-      message: 'Scan this QR code with college WhatsApp to link device.',
+      isConnected: qrResult.isConnected,
+      qrImage: qrResult.qrImage,
+      message: qrResult.message,
     });
   } catch (error) {
     next(error);
@@ -98,15 +98,11 @@ router.post('/whatsapp/generate-qr', protect, authorize('admin', 'principal'), a
 // @route   POST /api/messaging/whatsapp/unlink (Admin only - Unlink to change number)
 router.post('/whatsapp/unlink', protect, authorize('admin', 'principal'), async (req, res, next) => {
   try {
-    let config = (await SystemConfig.findOne()) || (await SystemConfig.create({}));
-    config.whatsappLinked = false;
-    config.whatsappPhone = '';
-    config.whatsappQrCode = null;
-    await config.save();
+    const result = await unlinkWhatsAppDevice();
 
     res.json({
       success: true,
-      message: 'WhatsApp number unlinked successfully. You can now link any new phone/SIM in 15 seconds.',
+      message: result.message || 'WhatsApp number unlinked successfully. You can now link any new phone/SIM.',
     });
   } catch (error) {
     next(error);
