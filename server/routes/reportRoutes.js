@@ -85,9 +85,29 @@ router.get('/export-excel', protect, async (req, res, next) => {
   }
 });
 
-// @route   POST /api/reports/run-retention (Admin only - Manual 2-year retention cleanup)
+// @route   POST /api/reports/run-retention (Admin only - Requires administrator password confirmation)
 router.post('/run-retention', protect, authorize('admin', 'principal'), async (req, res, next) => {
   try {
+    const { adminPassword } = req.body;
+    if (!adminPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Administrator password confirmation is required to run manual retention cleanup.',
+      });
+    }
+
+    const User = (await import('../models/User.js')).default;
+    const bcrypt = (await import('bcryptjs')).default;
+    const adminUser = await User.findById(req.user._id);
+    if (!adminUser) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(adminPassword, adminUser.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect administrator password. Purge aborted.' });
+    }
+
     const result = await runRetentionCleanup();
     res.json({ success: true, result });
   } catch (error) {

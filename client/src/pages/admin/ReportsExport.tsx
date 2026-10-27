@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
-import { FileSpreadsheet, Download, Trash2, ShieldCheck } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { FileSpreadsheet, Download, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export const ReportsExport: React.FC = () => {
   const [programs, setPrograms] = useState<any[]>([]);
@@ -17,8 +16,6 @@ export const ReportsExport: React.FC = () => {
   const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  const [purging, setPurging] = useState<boolean>(false);
-
   useEffect(() => {
     loadFilters();
   }, []);
@@ -30,26 +27,6 @@ export const ReportsExport: React.FC = () => {
       if (cRes.data.success) setClasses(cRes.data.classes);
     } catch {
       // ignore
-    }
-  };
-
-  const handleManualRetention = async () => {
-    if (!window.confirm('Run 2-Year Retention Purge? This permanently removes daily attendance logs older than 2 years to keep the database fast.')) {
-      return;
-    }
-
-    setPurging(true);
-    try {
-      const res = await api.post('/reports/run-retention');
-      if (res.data.success) {
-        toast.success(
-          `Retention complete: ${res.data.result.sessionsDeleted} old sessions and ${res.data.result.logsDeleted} message logs purged.`
-        );
-      }
-    } catch (err: any) {
-      toast.error('Retention purge failed.');
-    } finally {
-      setPurging(false);
     }
   };
 
@@ -182,15 +159,12 @@ export const ReportsExport: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <button
-                onClick={handleManualRetention}
-                disabled={purging}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-700 font-bold text-xs transition flex items-center justify-center gap-2"
-              >
-                <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-rose-600" />
-                <span>{purging ? 'Purging Old Records...' : 'Run Retention Cleanup Now'}</span>
-              </button>
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-800 bg-emerald-50/80 px-4 py-3 rounded-2xl border border-emerald-200">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Autonomous Engine Active</span>
+              </div>
+              <span className="text-[10px] text-emerald-600 font-semibold">Zero Action Needed</span>
             </div>
           </div>
         </div>
