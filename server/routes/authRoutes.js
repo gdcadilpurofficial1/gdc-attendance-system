@@ -105,6 +105,80 @@ router.get('/me', protect, async (req, res) => {
   });
 });
 
+// @route   PUT /api/auth/update-password (Logged-in user: Admin, Teacher, Principal)
+router.put('/update-password', protect, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide both your current password and a new password.',
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User account not found.' });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
+    }
+
+    if (!strongPasswordRegex.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'New password too weak. Must be at least 8 characters with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.',
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated successfully. Please use your new password next time you log in.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   PUT /api/auth/update-profile (Logged-in user)
+router.put('/update-profile', protect, async (req, res, next) => {
+  try {
+    const { fullName, phone, email, department } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User account not found.' });
+    }
+
+    if (fullName) user.fullName = fullName.trim();
+    if (phone !== undefined) user.phone = phone.trim();
+    if (email !== undefined) user.email = email.trim().toLowerCase();
+    if (department !== undefined) user.department = department.trim();
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully.',
+      user: {
+        id: user._id,
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        phone: user.phone,
+        assignedClasses: user.assignedClasses,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @route   POST /api/auth/logout
 router.post('/logout', (req, res) => {
   res.cookie('token', 'none', {

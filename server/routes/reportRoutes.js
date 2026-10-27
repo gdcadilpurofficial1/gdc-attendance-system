@@ -12,7 +12,15 @@ const router = express.Router();
 // @route   GET /api/reports/overview (Dashboard stats)
 router.get('/overview', protect, async (req, res, next) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // Current date in Pakistan Time (Asia/Karachi, UTC+5)
+    let today = req.query.date;
+    if (!today) {
+      try {
+        today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(new Date());
+      } catch {
+        today = new Date().toISOString().split('T')[0];
+      }
+    }
 
     // Counts
     const totalStudents = await Student.countDocuments({ isActive: true });

@@ -7,12 +7,24 @@ import { cacheRostersForOffline } from '../../offline/syncEngine';
 import { GraduationCap, Calendar, ArrowRight, CheckCircle2, Clock, Sparkles, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const getTodayPkt = () => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(new Date());
+  } catch {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+};
+
 export const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [todayDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [todayDate] = useState<string>(getTodayPkt());
   const [markedMap, setMarkedMap] = useState<Record<string, any>>({});
 
   useEffect(() => {

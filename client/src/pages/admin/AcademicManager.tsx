@@ -172,7 +172,27 @@ export const AcademicManager: React.FC = () => {
         loadData();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to delete program.');
+      const msg = err.response?.data?.message || 'Failed to delete program.';
+      if (msg.includes('active class section(s) are linked')) {
+        if (
+          window.confirm(
+            `${msg}\n\nDo you want to FORCE DELETE this program along with its empty class sections?`
+          )
+        ) {
+          try {
+            const forceRes = await api.delete(`/academic/programs/${prog._id}?force=true`);
+            if (forceRes.data.success) {
+              toast.success(`Program "${prog.code}" and linked classes deleted.`);
+              loadData();
+              return;
+            }
+          } catch (fErr: any) {
+            toast.error(fErr.response?.data?.message || 'Force delete failed.');
+            return;
+          }
+        }
+      }
+      toast.error(msg);
     }
   };
 
@@ -243,7 +263,27 @@ export const AcademicManager: React.FC = () => {
         loadData();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Delete failed.');
+      const msg = err.response?.data?.message || 'Delete failed.';
+      if (msg.includes('attendance session records exist')) {
+        if (
+          window.confirm(
+            `${msg}\n\nDo you want to FORCE DELETE this class along with its attendance records?`
+          )
+        ) {
+          try {
+            const forceRes = await api.delete(`/academic/classes/${cls._id}?force=true`);
+            if (forceRes.data.success) {
+              toast.success(`Class section "${cls.name}" deleted.`);
+              loadData();
+              return;
+            }
+          } catch (fErr: any) {
+            toast.error(fErr.response?.data?.message || 'Force delete failed.');
+            return;
+          }
+        }
+      }
+      toast.error(msg);
     }
   };
 

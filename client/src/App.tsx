@@ -34,6 +34,9 @@ const MessagingHub = lazy(() =>
 const ReportsExport = lazy(() =>
   import('./pages/admin/ReportsExport').then((m) => ({ default: m.ReportsExport }))
 );
+const AdminSettings = lazy(() =>
+  import('./pages/admin/AdminSettings').then((m) => ({ default: m.AdminSettings }))
+);
 
 const PageLoader: React.FC = () => (
   <div className="min-h-[60vh] flex flex-col items-center justify-center">
@@ -78,6 +81,7 @@ export const AppContent: React.FC = () => {
               <Route path="/admin/teachers" element={<TeacherManager />} />
               <Route path="/admin/messaging" element={<MessagingHub />} />
               <Route path="/admin/reports" element={<ReportsExport />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
 
             {/* Fallback */}

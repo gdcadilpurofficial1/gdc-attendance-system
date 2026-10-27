@@ -11,6 +11,7 @@ import {
   LogOut,
   UserCheck,
   LayoutDashboard,
+  Settings,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -112,6 +113,17 @@ export const Navbar: React.FC = () => {
                   <FileSpreadsheet className="w-4 h-4 text-slate-500" />
                   Reports & Export
                 </Link>
+                <Link
+                  to="/admin/settings"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                    isActive('/admin/settings')
+                      ? 'bg-indigo-50 text-indigo-900 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Settings className="w-4 h-4 text-slate-500" />
+                  Settings
+                </Link>
               </>
             ) : (
               <>
@@ -163,6 +175,16 @@ export const Navbar: React.FC = () => {
               </span>
             </div>
 
+            {isAdmin && (
+              <Link
+                to="/admin/settings"
+                title="Settings & Password"
+                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+              >
+                <Settings className="w-4 h-4" />
+              </Link>
+            )}
+
             <button
               onClick={logout}
               title="Logout"
@@ -195,6 +217,9 @@ export const Navbar: React.FC = () => {
             </Link>
             <Link to="/admin/reports" className={isActive('/admin/reports') ? 'text-indigo-900 font-bold' : ''}>
               Reports
+            </Link>
+            <Link to="/admin/settings" className={isActive('/admin/settings') ? 'text-indigo-900 font-bold' : ''}>
+              Settings
             </Link>
           </>
         ) : (

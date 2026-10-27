@@ -15,6 +15,18 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const getTodayPkt = () => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(new Date());
+  } catch {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+};
+
 export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
 
@@ -23,7 +35,7 @@ export const AdminDashboard: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayPkt());
   const [statusFilter, setStatusFilter] = useState<string>('ALL'); // ALL, ABSENT, CHRONIC_TRUANT
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -37,18 +49,20 @@ export const AdminDashboard: React.FC = () => {
   const [adminNote, setAdminNote] = useState<string>('');
 
   useEffect(() => {
-    loadOverviewStats();
+    loadOverviewStats(selectedDate);
     loadAcademicFilters();
     loadTruancyAlerts();
   }, []);
 
   useEffect(() => {
     loadFilteredAttendance();
+    loadOverviewStats(selectedDate);
   }, [selectedProgram, selectedClass, selectedDate, statusFilter]);
 
-  const loadOverviewStats = async () => {
+  const loadOverviewStats = async (targetDate?: string) => {
     try {
-      const res = await api.get('/reports/overview');
+      const qDate = targetDate || selectedDate;
+      const res = await api.get(`/reports/overview?date=${qDate}`);
       if (res.data.success) {
         setStats(res.data.stats);
       }
