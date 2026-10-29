@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
+import { CloudWakeupBanner } from './components/CloudWakeupBanner';
 import { Login } from './pages/Login';
 import { Toaster } from 'react-hot-toast';
 
@@ -58,7 +59,8 @@ export const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar />
-      <main className="flex-1">
+      <CloudWakeupBanner />
+      <main className="flex-1 pb-20 lg:pb-0">
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/login" element={<Login />} />

@@ -20,6 +20,7 @@ export const MessagingHub: React.FC = () => {
   const [qrModal, setQrModal] = useState<boolean>(false);
   const [qrImage, setQrImage] = useState<string>('');
   const [loadingQr, setLoadingQr] = useState<boolean>(false);
+  const [retryingFailed, setRetryingFailed] = useState<boolean>(false);
 
   // Settings
   const [autoSend, setAutoSend] = useState<boolean>(true);
@@ -144,6 +145,22 @@ export const MessagingHub: React.FC = () => {
     }
   };
 
+  const handleRetryFailed = async () => {
+    setRetryingFailed(true);
+    try {
+      const res = await api.post('/messaging/retry-failed');
+      if (res.data.success) {
+        toast.success(res.data.message);
+        loadStatus();
+        loadLogs();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to retry messages.');
+    } finally {
+      setRetryingFailed(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
@@ -221,13 +238,28 @@ export const MessagingHub: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-bold">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs font-bold">
             <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl">
               Pending in Queue: {queue?.queueLength || 0}
             </span>
             <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl">
               Sent Today: {statusData?.stats?.sentToday || 0}
             </span>
+            {(statusData?.stats?.failedToday || 0) > 0 && (
+              <span className="bg-rose-50 text-rose-800 border border-rose-200 px-3 py-1.5 rounded-xl">
+                Failed Today: {statusData?.stats?.failedToday}
+              </span>
+            )}
+            {(statusData?.stats?.failedToday || 0) > 0 && (
+              <button
+                onClick={handleRetryFailed}
+                disabled={retryingFailed}
+                className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${retryingFailed ? 'animate-spin' : ''}`} />
+                <span>{retryingFailed ? 'Re-queueing...' : 'Retry Failed Messages'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -517,19 +549,33 @@ export const MessagingHub: React.FC = () => {
                       <span className="text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded">{log.channel}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                          log.status === 'SENT'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : log.status === 'SENDING'
-                            ? 'bg-indigo-100 text-indigo-800'
-                            : log.status === 'FAILED'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {log.status}
-                      </span>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                            log.status === 'SENT'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : log.status === 'SENDING'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : log.status === 'FAILED'
+                              ? 'bg-rose-100 text-rose-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {log.status}
+                        </span>
+                        {log.status === 'FAILED' && log.errorMessage && (
+                          <span
+                            title={log.errorMessage}
+                            className="text-[10px] text-rose-600 font-semibold max-w-[150px] truncate"
+                          >
+                            {log.errorMessage.includes('not registered')
+                              ? '⚠️ Not on WhatsApp'
+                              : log.errorMessage.includes('not linked') || log.errorMessage.includes('offline')
+                              ? '⚠️ Gateway Offline'
+                              : log.errorMessage}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">

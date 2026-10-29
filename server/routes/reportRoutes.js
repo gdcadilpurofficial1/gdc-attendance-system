@@ -42,6 +42,17 @@ router.get('/overview', protect, async (req, res, next) => {
     const totalMarked = presentToday + absentToday;
     const turnoutPercentage = totalMarked > 0 ? ((presentToday / totalMarked) * 100).toFixed(1) : 0;
 
+    // Check gateway status and failed dispatches
+    const SystemConfig = (await import('../models/SystemConfig.js')).default;
+    const MessageLog = (await import('../models/MessageLog.js')).default;
+    const config = (await SystemConfig.findOne()) || {};
+
+    const todayDateStart = new Date(today + 'T00:00:00.000Z');
+    const failedToday = await MessageLog.countDocuments({
+      status: 'FAILED',
+      createdAt: { $gte: todayDateStart },
+    });
+
     res.json({
       success: true,
       stats: {
@@ -53,6 +64,9 @@ router.get('/overview', protect, async (req, res, next) => {
         turnoutPercentage: Number(turnoutPercentage),
         activeTruancyAlerts,
         date: today,
+        whatsappLinked: Boolean(config.whatsappLinked),
+        smsConfigured: Boolean(config.smsGatewayApiKey),
+        failedToday,
       },
     });
   } catch (error) {

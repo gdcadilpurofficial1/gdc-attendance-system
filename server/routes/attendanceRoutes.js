@@ -1,6 +1,8 @@
 import express from 'express';
 import AttendanceSession from '../models/AttendanceSession.js';
 import Student from '../models/Student.js';
+import ClassSection from '../models/ClassSection.js';
+import User from '../models/User.js';
 import TruancyAlert from '../models/TruancyAlert.js';
 import messagingQueue from '../services/messagingQueue.js';
 import { protect, authorize } from '../middleware/auth.js';
@@ -319,17 +321,23 @@ router.get('/class-stats/:classSectionId', protect, async (req, res, next) => {
     let sessionFilter = { isConfirmed: true };
 
     if (req.user.role === 'teacher') {
-      const assignedIds = (req.user.assignedClasses || []).map((c) =>
+      const teacherUser = await User.findById(req.user._id);
+      const userAssigned = (teacherUser?.assignedClasses || []).map((c) =>
         typeof c === 'object' ? c._id.toString() : c.toString()
       );
+      // Fetch all classes where teacher is Incharge OR explicitly assigned
+      const teacherClasses = await ClassSection.find({
+        $or: [{ inchargeTeacherId: req.user._id }, { _id: { $in: userAssigned } }],
+      }).select('_id');
+      const allowedClassIds = teacherClasses.map((c) => c._id.toString());
 
       if (classSectionId === 'all') {
-        if (assignedIds.length > 0) {
-          studentFilter.classSectionId = { $in: assignedIds };
-          sessionFilter.classSectionId = { $in: assignedIds };
+        if (allowedClassIds.length > 0) {
+          studentFilter.classSectionId = { $in: allowedClassIds };
+          sessionFilter.classSectionId = { $in: allowedClassIds };
         }
       } else {
-        if (assignedIds.length > 0 && !assignedIds.includes(classSectionId)) {
+        if (allowedClassIds.length > 0 && !allowedClassIds.includes(classSectionId)) {
           return res.status(403).json({ success: false, message: 'You are not assigned to this class section.' });
         }
         studentFilter.classSectionId = classSectionId;

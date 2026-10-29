@@ -13,6 +13,7 @@ import {
   BarChart3,
   TrendingUp,
 } from 'lucide-react';
+import { SkeletonStats, SkeletonTable } from '../../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 const getTodayPkt = () => {
@@ -178,55 +179,108 @@ export const AdminDashboard: React.FC = () => {
         </a>
       </div>
 
+      {/* Gateway Disconnect or Failed Delivery Alert Banner */}
+      {stats && !stats.whatsappLinked && !stats.smsConfigured && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-amber-700" />
+            </div>
+            <div>
+              <h3 className="font-bold text-amber-950 text-sm">
+                Parent Notification Gateways Are Disconnected
+              </h3>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Automated WhatsApp and SMS gateways are currently unlinked. Absentees cannot be notified automatically until you connect college WhatsApp.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/admin/messaging"
+            className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-bold transition shrink-0 self-start sm:self-auto text-center"
+          >
+            Connect Gateway in Messaging Hub
+          </a>
+        </div>
+      )}
+
+      {stats && stats.failedToday > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-3xl p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-rose-700" />
+            </div>
+            <div>
+              <h3 className="font-bold text-rose-950 text-sm">
+                {stats.failedToday} Absentee Notice(s) Failed Delivery Today
+              </h3>
+              <p className="text-xs text-rose-800 mt-0.5">
+                Some parent numbers are not on WhatsApp or the gateway was offline. You can retry dispatch or send 1-click WhatsApp web notices.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/admin/messaging"
+            className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition shrink-0 self-start sm:self-auto text-center"
+          >
+            Review & Retry in Hub
+          </a>
+        </div>
+      )}
+
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
-            <Users className="w-4 h-4 text-indigo-600" />
+      {!stats ? (
+        <SkeletonStats />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
+              <Users className="w-4 h-4 text-indigo-600" />
+            </div>
+            <span className="text-2xl font-black text-slate-900">{stats?.totalStudents || 0}</span>
+            <span className="block text-[11px] text-slate-400 mt-1">Enrolled across college</span>
           </div>
-          <span className="text-2xl font-black text-slate-900">{stats?.totalStudents || 0}</span>
-          <span className="block text-[11px] text-slate-400 mt-1">Enrolled across college</span>
-        </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Today's Turnout</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Today's Turnout</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            </div>
+            <span className="text-2xl font-black text-emerald-700">{stats?.turnoutPercentage || 0}%</span>
+            <span className="block text-[11px] text-slate-400 mt-1">{stats?.presentToday || 0} Present Today</span>
           </div>
-          <span className="text-2xl font-black text-emerald-700">{stats?.turnoutPercentage || 0}%</span>
-          <span className="block text-[11px] text-slate-400 mt-1">{stats?.presentToday || 0} Present Today</span>
-        </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Classes Marked</span>
-            <GraduationCap className="w-4 h-4 text-blue-600" />
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Classes Marked</span>
+              <GraduationCap className="w-4 h-4 text-blue-600" />
+            </div>
+            <span className="text-2xl font-black text-slate-900">
+              {stats?.classesMarkedToday || 0} / {stats?.totalClasses || 0}
+            </span>
+            <span className="block text-[11px] text-slate-400 mt-1">Submitted sessions</span>
           </div>
-          <span className="text-2xl font-black text-slate-900">
-            {stats?.classesMarkedToday || 0} / {stats?.totalClasses || 0}
-          </span>
-          <span className="block text-[11px] text-slate-400 mt-1">Submitted sessions</span>
-        </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Absentees Today</span>
-            <XCircle className="w-4 h-4 text-rose-600" />
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Absentees Today</span>
+              <XCircle className="w-4 h-4 text-rose-600" />
+            </div>
+            <span className="text-2xl font-black text-rose-700">{stats?.absentToday || 0}</span>
+            <span className="block text-[11px] text-slate-400 mt-1">Notices auto-queued</span>
           </div>
-          <span className="text-2xl font-black text-rose-700">{stats?.absentToday || 0}</span>
-          <span className="block text-[11px] text-slate-400 mt-1">Notices auto-queued</span>
-        </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-rose-200 shadow-xs col-span-2 lg:col-span-1 bg-rose-50/30">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Chronic Truancy</span>
-            <AlertTriangle className="w-4 h-4 text-rose-600" />
+          <div className="bg-white rounded-2xl p-5 border border-rose-200 shadow-xs col-span-2 lg:col-span-1 bg-rose-50/30">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Chronic Truancy</span>
+              <AlertTriangle className="w-4 h-4 text-rose-600" />
+            </div>
+            <span className="text-2xl font-black text-rose-700">{truancyAlerts.length}</span>
+            <span className="block text-[11px] text-rose-600 font-semibold mt-1">🚨 3+ Days Consecutive</span>
           </div>
-          <span className="text-2xl font-black text-rose-700">{truancyAlerts.length}</span>
-          <span className="block text-[11px] text-rose-600 font-semibold mt-1">🚨 3+ Days Consecutive</span>
         </div>
-      </div>
+      )}
 
       {/* Visual Analytics & Turnout Bar Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -487,9 +541,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {loadingTable ? (
-          <div className="p-12 text-center text-xs text-slate-400 font-semibold animate-pulse">
-            Loading attendance records...
-          </div>
+          <SkeletonTable rows={5} />
         ) : allRows.length === 0 ? (
           <div className="p-12 text-center text-xs text-slate-400 font-semibold">
             No attendance records match the selected filters.

@@ -79,6 +79,42 @@ router.get('/logs', protect, async (req, res, next) => {
   }
 });
 
+// @route   POST /api/messaging/retry-failed (Admin only - Re-queue failed messages after connecting gateway)
+router.post('/retry-failed', protect, authorize('admin', 'principal'), async (req, res, next) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const failedLogs = await MessageLog.find({
+      status: 'FAILED',
+      createdAt: { $gte: today },
+    });
+
+    if (failedLogs.length === 0) {
+      return res.json({ success: true, count: 0, message: 'No failed messages found for today.' });
+    }
+
+    for (const log of failedLogs) {
+      log.status = 'QUEUED';
+      log.errorMessage = '';
+      await log.save();
+      messagingQueue.queue.push(log._id.toString());
+    }
+
+    if (!messagingQueue.isProcessing) {
+      messagingQueue.processQueue();
+    }
+
+    res.json({
+      success: true,
+      count: failedLogs.length,
+      message: `Successfully re-queued ${failedLogs.length} failed message(s) for automated dispatch.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @route   POST /api/messaging/whatsapp/generate-qr (Admin only - Link device with genuine Baileys handshake)
 router.post('/whatsapp/generate-qr', protect, authorize('admin', 'principal'), async (req, res, next) => {
   try {

@@ -155,8 +155,24 @@ export const sendWhatsAppMessage = async (recipientPhone, messageText) => {
   if (clean.startsWith('0')) {
     clean = '92' + clean.substring(1);
   }
-  const jid = `${clean}@s.whatsapp.net`;
 
+  // Pre-flight check: verify if the phone number is registered on WhatsApp
+  try {
+    const results = await sock.onWhatsApp(clean);
+    const target = results && results[0];
+    if (target && target.exists === false) {
+      throw new Error(
+        `Phone number ${recipientPhone} is not registered on WhatsApp (No active WhatsApp account).`
+      );
+    }
+  } catch (err) {
+    if (err.message && err.message.includes('not registered on WhatsApp')) {
+      throw err;
+    }
+    // If checking onWhatsApp timed out or errored on network, continue with direct send attempt
+  }
+
+  const jid = `${clean}@s.whatsapp.net`;
   await sock.sendMessage(jid, { text: messageText });
   return true;
 };

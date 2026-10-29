@@ -3,6 +3,7 @@ import Program from '../models/Program.js';
 import ClassSection from '../models/ClassSection.js';
 import Student from '../models/Student.js';
 import AttendanceSession from '../models/AttendanceSession.js';
+import User from '../models/User.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -114,6 +115,13 @@ router.get('/classes', protect, async (req, res, next) => {
     if (req.query.programId) filter.programId = req.query.programId;
     if (req.query.academicYear) filter.academicYear = req.query.academicYear;
 
+    // If teacher, return all classes where they are incharge OR in their assignedClasses
+    if (req.user && req.user.role === 'teacher') {
+      const teacherUser = await User.findById(req.user._id);
+      const assigned = (teacherUser?.assignedClasses || []).map((c) => (c._id ? c._id : c));
+      filter.$or = [{ inchargeTeacherId: req.user._id }, { _id: { $in: assigned } }];
+    }
+
     const classes = await ClassSection.find(filter)
       .populate('programId', 'name code level durationYears')
       .populate('inchargeTeacherId', 'fullName username department')
@@ -144,6 +152,13 @@ router.post('/classes', protect, authorize('admin', 'principal'), async (req, re
       shift: shift || 'Morning',
       inchargeTeacherId: inchargeTeacherId || null,
     });
+
+    // Bidirectional sync: If incharge is selected, ensure this class is in the teacher's assignedClasses
+    if (inchargeTeacherId) {
+      await User.findByIdAndUpdate(inchargeTeacherId, {
+        $addToSet: { assignedClasses: newClass._id },
+      });
+    }
 
     const populated = await newClass.populate('programId inchargeTeacherId');
     res.status(201).json({ success: true, classSection: populated });
@@ -178,6 +193,13 @@ router.put('/classes/:id', protect, authorize('admin', 'principal'), async (req,
     }).populate('programId inchargeTeacherId');
 
     if (!updated) return res.status(404).json({ success: false, message: 'Class section not found.' });
+
+    // Bidirectional sync: If incharge is selected, ensure this class is in the teacher's assignedClasses
+    if (inchargeTeacherId) {
+      await User.findByIdAndUpdate(inchargeTeacherId, {
+        $addToSet: { assignedClasses: req.params.id },
+      });
+    }
 
     res.json({ success: true, classSection: updated });
   } catch (error) {

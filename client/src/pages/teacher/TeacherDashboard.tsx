@@ -5,6 +5,7 @@ import api from '../../api/client';
 import { db } from '../../offline/db';
 import { cacheRostersForOffline } from '../../offline/syncEngine';
 import { GraduationCap, Calendar, ArrowRight, CheckCircle2, Clock, Sparkles, Users } from 'lucide-react';
+import { SkeletonClassCards } from '../../components/SkeletonLoader';
 import toast from 'react-hot-toast';
 
 const getTodayPkt = () => {
@@ -32,7 +33,17 @@ export const TeacherDashboard: React.FC = () => {
   }, []);
 
   const fetchTeacherClasses = async () => {
-    setLoading(true);
+    // ⚡ Fast Initial Paint: Load cached classes from Dexie instantly (<50ms)
+    try {
+      const cached = await db.classes.toArray();
+      if (cached && cached.length > 0) {
+        setClasses(cached);
+        setLoading(false);
+      }
+    } catch {
+      // ignore
+    }
+
     try {
       let classList: any[] = [];
 
@@ -40,11 +51,6 @@ export const TeacherDashboard: React.FC = () => {
         const res = await api.get('/academic/classes');
         if (res.data.success) {
           classList = res.data.classes;
-          // Filter only assigned classes if user has assignedClasses
-          if (user?.assignedClasses && user.assignedClasses.length > 0) {
-            const assignedIds = user.assignedClasses.map((c: any) => (typeof c === 'object' ? c._id : c));
-            classList = classList.filter((c: any) => assignedIds.includes(c._id));
-          }
 
           // Fetch all students for offline caching
           const stdRes = await api.get('/students');
@@ -124,12 +130,8 @@ export const TeacherDashboard: React.FC = () => {
         </span>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="bg-white rounded-2xl p-6 border border-slate-200 animate-pulse h-48" />
-          ))}
-        </div>
+      {loading && classes.length === 0 ? (
+        <SkeletonClassCards />
       ) : classes.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300">
           <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-3" />
