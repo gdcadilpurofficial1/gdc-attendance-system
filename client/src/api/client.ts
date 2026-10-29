@@ -26,7 +26,7 @@ api.interceptors.request.use(
       coldStartTimer = setTimeout(() => {
         isWarmingUp = true;
         window.dispatchEvent(new CustomEvent('gdc-cloud-warming-up'));
-      }, 2500);
+      }, 3500); // 3.5s threshold: only fires when cloud server was asleep (normal requests finish in <500ms)
     }
 
     return config;
@@ -69,5 +69,17 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Silent background keep-alive heartbeat: pings /health every 9 minutes while browser tab is open
+// This keeps the cloud server hot and responsive from 8:00 AM to 6:00 PM without sleep
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && navigator.onLine) {
+      api.get('/health').catch(() => {
+        // silent suppression for background ping
+      });
+    }
+  }, 9 * 60 * 1000);
+}
 
 export default api;

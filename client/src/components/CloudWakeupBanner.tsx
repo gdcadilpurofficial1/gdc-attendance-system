@@ -47,10 +47,10 @@ export const CloudWakeupBanner: React.FC = () => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="truncate">Connecting to Cloud Server...</span>
-              <span className="text-[10px] text-indigo-300 font-mono">Waking Up</span>
+              <span className="text-[10px] text-indigo-300 font-mono">~30s</span>
             </div>
             <p className="text-[11px] text-slate-300 truncate mt-0.5">
-              Backend wakes up from sleep (~20-30s on first load). Please wait.
+              Please wait while the cloud server connects.
             </p>
           </div>
         </div>
@@ -62,7 +62,7 @@ export const CloudWakeupBanner: React.FC = () => {
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div className="text-xs font-bold">
-            Cloud backend online! All services operational.
+            Connected to Cloud Server!
           </div>
         </div>
       )}
