@@ -79,9 +79,9 @@ class MessagingQueue {
 
         // Retrieve student's fatherName and gender
         const student = await Student.findById(record.studentId).select('fatherName gender');
-        const fatherName = student?.fatherName || 'Walid';
+        const fatherName = student?.fatherName || 'والد';
         const isFemale = student?.gender === 'Female';
-        const relation = isFemale ? 'apki dukhtar' : 'apka farzand';
+        const relation = isFemale ? 'توهان جي نياڻي' : 'توهان جو پٽ';
 
         // Build personalized template with father name and gender-based son/daughter relation
         let messageText = (config.messageTemplate || '')
@@ -98,6 +98,9 @@ class MessagingQueue {
         }
         if (isFemale && messageText.includes('apka farzand')) {
           messageText = messageText.replace(/apka farzand/g, 'apki dukhtar');
+        }
+        if (isFemale && messageText.includes('توهان جو پٽ')) {
+          messageText = messageText.replace(/توهان جو پٽ/g, 'توهان جي نياڻي');
         }
 
         // Create MessageLog entry

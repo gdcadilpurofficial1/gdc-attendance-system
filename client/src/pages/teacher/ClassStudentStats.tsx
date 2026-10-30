@@ -151,14 +151,14 @@ export const ClassStudentStats: React.FC = () => {
       phone = '92' + phone.substring(1);
     }
     const isFemale = student.gender === 'Female';
-    const relation = isFemale ? 'apki dukhtar' : 'apka farzand';
-    const fatherGreeting = student.fatherName ? `Mohtaram ${student.fatherName}` : 'Mohtaram Walid';
-    const todayStr = new Date().toISOString().split('T')[0];
+    const relation = isFemale ? 'توهان جي نياڻي' : 'توهان جو پٽ';
+    const fatherGreeting = student.fatherName ? `محترم ${student.fatherName}` : 'محترم والد';
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(new Date());
 
     const message = encodeURIComponent(
-      `${fatherGreeting}, ${relation} ${student.fullName}, Roll No. ${student.rollNo}, Class ${
+      `${fatherGreeting}، ${relation} ${student.fullName}، رول نمبر ${student.rollNo}، ڪلاس ${
         student.className || currentClass?.name || 'Class'
-      } aj ${todayStr} Govt Degree College Adilpur se ghair-hazir (absent) hai. Baraye meharbani haziri yaqeeni banayein. Principal, GDC Adilpur.`
+      } اڄ ${todayStr} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.`
     );
     return `https://wa.me/${phone}?text=${message}`;
   };
@@ -460,8 +460,9 @@ export const ClassStudentStats: React.FC = () => {
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col">
                           <span className="font-black text-slate-900 text-xs sm:text-sm">{std.fullName}</span>
-                          <span className="text-[11px] text-slate-500">
-                            s/o {std.fatherName} {std.caste && `(${std.caste})`}
+                          <span className="text-[11px] font-bold text-indigo-700 tracking-wide mt-0.5">
+                            {std.gender === 'Female' ? 'd/o' : 's/o'} {std.fatherName || 'N/A'}{' '}
+                            {std.caste && `(${std.caste})`}
                           </span>
                           {selectedClassId === 'all' && std.className && (
                             <span className="inline-block mt-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded w-max">

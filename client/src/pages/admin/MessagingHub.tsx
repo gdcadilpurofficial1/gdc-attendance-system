@@ -123,9 +123,9 @@ export const MessagingHub: React.FC = () => {
 
   const handleResetDefaultTemplate = () => {
     const defaultTpl =
-      'Mohtaram {FATHER_NAME}, {RELATION} {STUDENT_NAME}, Roll No. {ROLL_NO}, Class {CLASS_NAME} aj {DATE} Govt Degree College Adilpur se ghair-hazir (absent) hai. Baraye meharbani haziri yaqeeni banayein. Principal, GDC Adilpur.';
+      'محترم {FATHER_NAME}، {RELATION} {STUDENT_NAME}، رول نمبر {ROLL_NO}، ڪلاس {CLASS_NAME} اڄ {DATE} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.';
     setTemplate(defaultTpl);
-    toast.success('Reset template to standard format.');
+    toast.success('Reset template to standard Sindhi format.');
   };
 
   const insertVariable = (varName: string) => {
@@ -471,7 +471,7 @@ export const MessagingHub: React.FC = () => {
             <span className="text-[10px] font-bold text-slate-400 uppercase py-1">Insert Tags:</span>
             {[
               { tag: '{FATHER_NAME}', desc: "Father's name" },
-              { tag: '{RELATION}', desc: "'apka farzand' / 'apki dukhtar'" },
+              { tag: '{RELATION}', desc: "'توهان جو پٽ' / 'توهان جي نياڻي'" },
               { tag: '{STUDENT_NAME}', desc: 'Student Name' },
               { tag: '{ROLL_NO}', desc: 'Roll No.' },
               { tag: '{CLASS_NAME}', desc: 'Class & Section' },
@@ -493,12 +493,14 @@ export const MessagingHub: React.FC = () => {
             value={template}
             onChange={(e) => setTemplate(e.target.value)}
             rows={3}
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            dir="auto"
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans"
           />
 
           <p className="text-[11px] text-slate-500 mt-1.5">
             💡 <strong>Smart Gender Handling:</strong> The <code>{'{RELATION}'}</code> tag automatically translates to{' '}
-            <strong>"apka farzand"</strong> for male students and <strong>"apki dukhtar"</strong> for female students.
+            <strong className="text-slate-800">'توهان جو پٽ'</strong> for male students and{' '}
+            <strong className="text-slate-800">'توهان جي نياڻي'</strong> for female students.
           </p>
         </div>
 

@@ -312,8 +312,7 @@ export const StudentManager: React.FC = () => {
               <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Roll</th>
-                  <th className="py-3 px-4">Student Name</th>
-                  <th className="py-3 px-4">Father Name</th>
+                  <th className="py-3 px-4">Student & Father Details</th>
                   <th className="py-3 px-4">Class / Section</th>
                   <th className="py-3 px-4">Parent Phone</th>
                   <th className="py-3 px-4">Attendance Stats</th>
@@ -324,8 +323,15 @@ export const StudentManager: React.FC = () => {
                 {paginatedStudents.map((st) => (
                   <tr key={st._id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3 px-4 font-black text-slate-900">{st.rollNo}</td>
-                    <td className="py-3 px-4 font-bold text-slate-900">{st.fullName}</td>
-                    <td className="py-3 px-4 text-slate-600">{st.fatherName}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-900 text-sm leading-tight">{st.fullName}</span>
+                        <span className="text-[11px] font-bold text-indigo-700 tracking-wide mt-0.5">
+                          {st.gender === 'Female' ? 'd/o' : 's/o'} {st.fatherName || 'N/A'}{' '}
+                          {st.caste && <span className="text-slate-500 font-medium">({st.caste})</span>}
+                        </span>
+                      </div>
+                    </td>
                     <td className="py-3 px-4">
                       <span className="font-semibold text-slate-700">{st.classSectionId?.name || 'Class'}</span>
                     </td>

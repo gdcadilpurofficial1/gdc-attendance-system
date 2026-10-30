@@ -23,6 +23,7 @@ interface StudentAttendanceItem {
   studentId: string;
   rollNo: string;
   studentName: string;
+  fatherName?: string;
   parentPhone: string;
   status: StatusType;
   consecutiveAbsences: number;
@@ -136,7 +137,20 @@ export const RollCall: React.FC = () => {
         }
 
         if (existingSession && existingSession.records && existingSession.records.length > 0) {
-          setRecords(existingSession.records);
+          const recordMap = new Map(existingSession.records.map((r: any) => [r.studentId, r]));
+          const merged: StudentAttendanceItem[] = studentList.map((s) => {
+            const existing: any = recordMap.get(s._id);
+            return {
+              studentId: s._id,
+              rollNo: s.rollNo,
+              studentName: s.fullName,
+              fatherName: s.fatherName || existing?.fatherName || '',
+              parentPhone: s.parentPhone,
+              status: (existing?.status as StatusType) || 'PRESENT',
+              consecutiveAbsences: existing?.consecutiveAbsences ?? (s.consecutiveAbsences || 0),
+            };
+          });
+          setRecords(merged);
           setIsConfirmed(!!existingSession.isConfirmed);
         } else {
           // Initialize fresh roll call (Default all PRESENT)
@@ -144,6 +158,7 @@ export const RollCall: React.FC = () => {
             studentId: s._id,
             rollNo: s.rollNo,
             studentName: s.fullName,
+            fatherName: s.fatherName || '',
             parentPhone: s.parentPhone,
             status: 'PRESENT',
             consecutiveAbsences: s.consecutiveAbsences || 0,
@@ -429,6 +444,7 @@ export const RollCall: React.FC = () => {
             const isMatch =
               !searchFilter ||
               record.studentName.toLowerCase().includes(searchFilter.toLowerCase()) ||
+              (record.fatherName && record.fatherName.toLowerCase().includes(searchFilter.toLowerCase())) ||
               record.rollNo.toLowerCase().includes(searchFilter.toLowerCase());
 
             if (!isMatch) return null;
@@ -452,7 +468,7 @@ export const RollCall: React.FC = () => {
               >
                 <div className="flex items-center gap-3.5">
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm ${
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
                       isAbsent
                         ? 'bg-rose-600 text-white'
                         : isLeave
@@ -463,9 +479,9 @@ export const RollCall: React.FC = () => {
                     {record.rollNo}
                   </div>
 
-                  <div>
+                  <div className="flex flex-col">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">{record.studentName}</span>
+                      <span className="font-bold text-slate-900 text-sm leading-tight">{record.studentName}</span>
                       {isChronicTruant && (
                         <span className="flex items-center gap-0.5 text-[10px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">
                           <AlertTriangle className="w-3 h-3 text-rose-600" />
@@ -473,7 +489,14 @@ export const RollCall: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400">Parent: {record.parentPhone || 'No Phone'}</span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                      {record.fatherName && (
+                        <span className="text-[11px] font-bold text-indigo-700">
+                          s/o {record.fatherName}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-slate-400">Parent: {record.parentPhone || 'No Phone'}</span>
+                    </div>
                   </div>
                 </div>
 

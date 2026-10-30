@@ -17,6 +17,15 @@ router.get('/status', protect, async (req, res, next) => {
     const queueStatus = messagingQueue.getStatus();
     const config = (await SystemConfig.findOne()) || (await SystemConfig.create({}));
 
+    // Auto-migrate legacy Urdu template to standard Sindhi format
+    const SINDHI_DEFAULT_TEMPLATE =
+      'محترم {FATHER_NAME}، {RELATION} {STUDENT_NAME}، رول نمبر {ROLL_NO}، ڪلاس {CLASS_NAME} اڄ {DATE} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.';
+
+    if (!config.messageTemplate || config.messageTemplate.includes('Mohtaram')) {
+      config.messageTemplate = SINDHI_DEFAULT_TEMPLATE;
+      await config.save();
+    }
+
     // Today's total sent / failed count
     const today = new Date();
     today.setHours(0, 0, 0, 0);

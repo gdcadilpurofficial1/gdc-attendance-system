@@ -26,6 +26,7 @@ export interface IOfflineAttendanceRecord {
   studentId: string;
   rollNo: string;
   studentName: string;
+  fatherName?: string;
   parentPhone: string;
   status: 'PRESENT' | 'ABSENT' | 'LEAVE';
   consecutiveAbsences: number;

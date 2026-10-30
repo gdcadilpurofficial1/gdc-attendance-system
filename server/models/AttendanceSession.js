@@ -15,6 +15,10 @@ const attendanceRecordItemSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    fatherName: {
+      type: String,
+      default: '',
+    },
     parentPhone: {
       type: String,
       required: true,

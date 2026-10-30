@@ -156,6 +156,7 @@ router.post('/submit', protect, async (req, res, next) => {
         studentId: item.studentId,
         rollNo: item.rollNo,
         studentName: item.studentName,
+        fatherName: item.fatherName || '',
         parentPhone: item.parentPhone,
         status: item.status,
         consecutiveAbsences: item.consecutiveAbsences || 0,

@@ -40,7 +40,7 @@ const systemConfigSchema = new mongoose.Schema(
     messageTemplate: {
       type: String,
       default:
-        'Mohtaram {FATHER_NAME}, {RELATION} {STUDENT_NAME}, Roll No. {ROLL_NO}, Class {CLASS_NAME} aj {DATE} Govt Degree College Adilpur se ghair-hazir (absent) hai. Baraye meharbani haziri yaqeeni banayein. Principal, GDC Adilpur.',
+        'محترم {FATHER_NAME}، {RELATION} {STUDENT_NAME}، رول نمبر {ROLL_NO}، ڪلاس {CLASS_NAME} اڄ {DATE} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.',
     },
   },
   {
