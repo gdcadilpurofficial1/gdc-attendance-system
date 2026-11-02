@@ -119,9 +119,11 @@ const attendanceSessionSchema = new mongoose.Schema(
   }
 );
 
-// Compound index for fast queries by date and class
+// Compound indexes for fast queries by date, class, and confirmation status
 attendanceSessionSchema.index({ date: 1, classSectionId: 1 });
 attendanceSessionSchema.index({ date: 1, programId: 1 });
+attendanceSessionSchema.index({ classSectionId: 1, isConfirmed: 1 });
+attendanceSessionSchema.index({ isConfirmed: 1, date: -1 });
 
 const AttendanceSession = mongoose.model('AttendanceSession', attendanceSessionSchema);
 export default AttendanceSession;

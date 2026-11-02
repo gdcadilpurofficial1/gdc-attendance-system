@@ -1,7 +1,6 @@
 import express from 'express';
 import Student from '../models/Student.js';
 import { protect, authorize } from '../middleware/auth.js';
-import { seedXIICohort } from '../services/seedService.js';
 
 const router = express.Router();
 
@@ -38,7 +37,8 @@ router.get('/', protect, async (req, res, next) => {
     const students = await Student.find(filter)
       .populate('programId', 'name code')
       .populate('classSectionId', 'name section yearLevel')
-      .sort({ rollNo: 1 });
+      .sort({ rollNo: 1 })
+      .lean();
 
     res.json({ success: true, count: students.length, students });
   } catch (error) {
@@ -69,20 +69,6 @@ router.post('/', protect, authorize('admin', 'principal'), async (req, res, next
     if (error.code === 11000) {
       return res.status(400).json({ success: false, message: 'Roll number already exists in this class section.' });
     }
-    next(error);
-  }
-});
-
-// @route   POST /api/students/seed-xii-cohort (Admin only - Seed XII Pre-Eng & Pre-Med 199 students)
-router.post('/seed-xii-cohort', protect, authorize('admin', 'principal'), async (req, res, next) => {
-  try {
-    const result = await seedXIICohort();
-    res.json({
-      success: true,
-      message: `Successfully seeded 199 students into XII Pre-Engineering (${result.preEngineeringCount}) and XII Pre-Medical (${result.preMedicalCount}).`,
-      data: result,
-    });
-  } catch (error) {
     next(error);
   }
 });

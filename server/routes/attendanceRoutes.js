@@ -322,14 +322,16 @@ router.get('/class-stats/:classSectionId', protect, async (req, res, next) => {
     let sessionFilter = { isConfirmed: true };
 
     if (req.user.role === 'teacher') {
-      const teacherUser = await User.findById(req.user._id);
+      const teacherUser = await User.findById(req.user._id).select('assignedClasses').lean();
       const userAssigned = (teacherUser?.assignedClasses || []).map((c) =>
         typeof c === 'object' ? c._id.toString() : c.toString()
       );
       // Fetch all classes where teacher is Incharge OR explicitly assigned
       const teacherClasses = await ClassSection.find({
         $or: [{ inchargeTeacherId: req.user._id }, { _id: { $in: userAssigned } }],
-      }).select('_id');
+      })
+        .select('_id')
+        .lean();
       const allowedClassIds = teacherClasses.map((c) => c._id.toString());
 
       if (classSectionId === 'all') {

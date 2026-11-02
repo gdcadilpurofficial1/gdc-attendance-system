@@ -78,8 +78,11 @@ const studentSchema = new mongoose.Schema(
   }
 );
 
-// Unique compound index: roll number must be unique within a class section
+// Compound indexes for ultra-fast queries across classes, sections & active status
 studentSchema.index({ classSectionId: 1, rollNo: 1 }, { unique: true });
+studentSchema.index({ classSectionId: 1, isActive: 1 });
+studentSchema.index({ programId: 1, isActive: 1 });
+studentSchema.index({ isActive: 1, fullName: 1 });
 
 const Student = mongoose.model('Student', studentSchema);
 export default Student;
