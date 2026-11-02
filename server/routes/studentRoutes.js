@@ -1,6 +1,7 @@
 import express from 'express';
 import Student from '../models/Student.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { seedXIICohort } from '../services/seedService.js';
 
 const router = express.Router();
 
@@ -8,8 +9,10 @@ const router = express.Router();
 const cleanPhone = (phone) => {
   if (!phone) return '';
   let cleaned = String(phone).replace(/\D/g, '');
-  if (cleaned.startsWith('92')) {
+  if (cleaned.startsWith('92') && cleaned.length >= 11) {
     cleaned = '0' + cleaned.substring(2);
+  } else if (cleaned.length === 10 && cleaned.startsWith('3')) {
+    cleaned = '0' + cleaned;
   }
   return cleaned;
 };
@@ -66,6 +69,20 @@ router.post('/', protect, authorize('admin', 'principal'), async (req, res, next
     if (error.code === 11000) {
       return res.status(400).json({ success: false, message: 'Roll number already exists in this class section.' });
     }
+    next(error);
+  }
+});
+
+// @route   POST /api/students/seed-xii-cohort (Admin only - Seed XII Pre-Eng & Pre-Med 199 students)
+router.post('/seed-xii-cohort', protect, authorize('admin', 'principal'), async (req, res, next) => {
+  try {
+    const result = await seedXIICohort();
+    res.json({
+      success: true,
+      message: `Successfully seeded 199 students into XII Pre-Engineering (${result.preEngineeringCount}) and XII Pre-Medical (${result.preMedicalCount}).`,
+      data: result,
+    });
+  } catch (error) {
     next(error);
   }
 });

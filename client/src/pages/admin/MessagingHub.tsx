@@ -29,9 +29,9 @@ export const MessagingHub: React.FC = () => {
   const [template, setTemplate] = useState<string>('');
 
   useEffect(() => {
-    loadStatus();
+    loadInitialConfig();
     loadLogs();
-    const interval = setInterval(loadStatus, 6000);
+    const interval = setInterval(pollQueueUpdates, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -57,7 +57,7 @@ export const MessagingHub: React.FC = () => {
     };
   }, [qrModal]);
 
-  const loadStatus = async () => {
+  const loadInitialConfig = async () => {
     try {
       const res = await api.get('/messaging/status');
       if (res.data.success) {
@@ -70,6 +70,22 @@ export const MessagingHub: React.FC = () => {
     } catch {
       // ignore
     }
+  };
+
+  // Periodic poll updates ONLY live queue/stats without wiping user's unsaved form changes!
+  const pollQueueUpdates = async () => {
+    try {
+      const res = await api.get('/messaging/status');
+      if (res.data.success) {
+        setStatusData(res.data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadStatus = async () => {
+    await pollQueueUpdates();
   };
 
   const loadLogs = async () => {
@@ -92,8 +108,17 @@ export const MessagingHub: React.FC = () => {
         messageTemplate: template,
       });
       if (res.data.success) {
-        toast.success('Messaging configuration saved.');
-        loadStatus();
+        toast.success('Messaging configuration saved successfully!');
+        setStatusData((prev: any) => ({
+          ...prev,
+          config: {
+            ...prev?.config,
+            autoSendOnSubmit: autoSend,
+            dispatchIntervalSeconds: Number(intervalSecs),
+            defaultChannel: channel,
+            messageTemplate: template,
+          },
+        }));
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Save failed.');
@@ -123,7 +148,7 @@ export const MessagingHub: React.FC = () => {
 
   const handleResetDefaultTemplate = () => {
     const defaultTpl =
-      'محترم {FATHER_NAME}، {RELATION} {STUDENT_NAME}، رول نمبر {ROLL_NO}، ڪلاس {CLASS_NAME} اڄ {DATE} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.';
+      'محترم {FATHER_NAME}، {RELATION} {STUDENT_NAME}، رول نمبر {ROLL_NO}، ڪلاس {CLASS_NAME} اڄ {DATE} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.\n\nواضح رهي ته سيڪريٽري ڪاليج ايجوڪيشن ڊپارٽمينٽ، حڪومت سنڌ جي هدايتن موجب سڀني شاگردن لاءِ 75 سيڪڙو حاضري لازمي آهي۔ جيڪڏهن ڪو شاگرد/شاگردياڻي مسلسل 3 ڏينهن دير سان ڪاليج ايندو/ايندي ته سندس نالو ڪاليج مان خارج ڪيو ويندو۔';
     setTemplate(defaultTpl);
     toast.success('Reset template to standard Sindhi format.');
   };
@@ -470,18 +495,18 @@ export const MessagingHub: React.FC = () => {
           <div className="flex flex-wrap gap-1.5 mb-2.5">
             <span className="text-[10px] font-bold text-slate-400 uppercase py-1">Insert Tags:</span>
             {[
-              { tag: '{FATHER_NAME}', desc: "Father's name" },
-              { tag: '{RELATION}', desc: "'توهان جو پٽ' / 'توهان جي نياڻي'" },
-              { tag: '{STUDENT_NAME}', desc: 'Student Name' },
-              { tag: '{ROLL_NO}', desc: 'Roll No.' },
-              { tag: '{CLASS_NAME}', desc: 'Class & Section' },
-              { tag: '{DATE}', desc: 'Attendance Date' },
+              { tag: '{STUDENT_NAME}', alias: '{name}', desc: 'Student Name' },
+              { tag: '{FATHER_NAME}', alias: '{fathername}', desc: "Father's name" },
+              { tag: '{RELATION}', alias: '{relationship}', desc: "'توهان جو پٽ' / 'توهان جي نياڻي'" },
+              { tag: '{ROLL_NO}', alias: '{rollno}', desc: 'Roll No.' },
+              { tag: '{CLASS_NAME}', alias: '{classname}', desc: 'Class & Section' },
+              { tag: '{DATE}', alias: '{date}', desc: 'Attendance Date' },
             ].map((item) => (
               <button
                 key={item.tag}
                 type="button"
                 onClick={() => insertVariable(item.tag)}
-                title={`Inserts ${item.desc}`}
+                title={`Inserts ${item.tag} (also accepts ${item.alias}) - ${item.desc}`}
                 className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[11px] font-mono font-medium transition cursor-pointer"
               >
                 {item.tag}
@@ -492,15 +517,13 @@ export const MessagingHub: React.FC = () => {
           <textarea
             value={template}
             onChange={(e) => setTemplate(e.target.value)}
-            rows={3}
+            rows={6}
             dir="auto"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans"
+            className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans leading-relaxed"
           />
 
-          <p className="text-[11px] text-slate-500 mt-1.5">
-            💡 <strong>Smart Gender Handling:</strong> The <code>{'{RELATION}'}</code> tag automatically translates to{' '}
-            <strong className="text-slate-800">'توهان جو پٽ'</strong> for male students and{' '}
-            <strong className="text-slate-800">'توهان جي نياڻي'</strong> for female students.
+          <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+            💡 <strong>Smart Tags & Dynamic Aliases:</strong> You can freely use <code>{'{STUDENT_NAME}'}</code>, <code>{'{FATHER_NAME}'}</code>, <code>{'{RELATION}'}</code>, <code>{'{DATE}'}</code> or lowercase shortcuts like <code>{'{name}'}</code>, <code>{'{fathername}'}</code>, <code>{'{relationship}'}</code>, <code>{'{date}'}</code>. The relationship tag automatically adapts to <strong>'توهان جو پٽ'</strong> for male students and <strong>'توهان جي نياڻي'</strong> for female students.
           </p>
         </div>
 

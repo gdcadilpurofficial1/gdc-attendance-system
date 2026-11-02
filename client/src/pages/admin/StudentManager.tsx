@@ -9,6 +9,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -47,6 +48,7 @@ export const StudentManager: React.FC = () => {
   const [bulkClassId, setBulkClassId] = useState<string>('');
   const [bulkProgramId, setBulkProgramId] = useState<string>('');
   const [importing, setImporting] = useState<boolean>(false);
+  const [seedingXII, setSeedingXII] = useState<boolean>(false);
 
   useEffect(() => {
     loadFiltersAndStudents();
@@ -216,6 +218,28 @@ export const StudentManager: React.FC = () => {
     }
   };
 
+  const handleSeedXII = async () => {
+    if (
+      !window.confirm(
+        'Automatically create XII Pre-Engineering & XII Pre-Medical classes and enroll all 199 students into the database?'
+      )
+    )
+      return;
+
+    setSeedingXII(true);
+    try {
+      const res = await api.post('/students/seed-xii-cohort');
+      if (res.data.success) {
+        toast.success(res.data.message);
+        loadFiltersAndStudents();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to seed XII cohort.');
+    } finally {
+      setSeedingXII(false);
+    }
+  };
+
   const totalStudents = students.length;
   const totalPages = Math.ceil(totalStudents / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -233,7 +257,17 @@ export const StudentManager: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleSeedXII}
+            disabled={seedingXII}
+            className="px-3.5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            title="Auto-creates F.Sc Pre-Eng & Pre-Med programs, classes, and enrolls all 199 students"
+          >
+            <Sparkles className={`w-4 h-4 ${seedingXII ? 'animate-spin' : ''}`} />
+            <span>{seedingXII ? 'Enrolling 199 Students...' : 'Enroll XII (199 Students)'}</span>
+          </button>
+
           <button
             onClick={() => setShowBulkModal(true)}
             className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"

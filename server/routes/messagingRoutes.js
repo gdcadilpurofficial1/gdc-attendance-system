@@ -17,11 +17,11 @@ router.get('/status', protect, async (req, res, next) => {
     const queueStatus = messagingQueue.getStatus();
     const config = (await SystemConfig.findOne()) || (await SystemConfig.create({}));
 
-    // Auto-migrate legacy Urdu template to standard Sindhi format
+    // Auto-migrate legacy template to standard Sindhi format with Sindh Govt 75% attendance directive
     const SINDHI_DEFAULT_TEMPLATE =
-      'محترم {FATHER_NAME}، {RELATION} {STUDENT_NAME}، رول نمبر {ROLL_NO}، ڪلاس {CLASS_NAME} اڄ {DATE} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.';
+      'محترم {FATHER_NAME}، {RELATION} {STUDENT_NAME}، رول نمبر {ROLL_NO}، ڪلاس {CLASS_NAME} اڄ {DATE} گورنمينٽ ڊگري ڪاليج عادلپور مان غير حاضر (غير حاضر) آهي. مھرباني ڪري حاضري کي يقيني بڻايو. پرنسپال، جي ڊي سي عادلپور.\n\nواضح رهي ته سيڪريٽري ڪاليج ايجوڪيشن ڊپارٽمينٽ، حڪومت سنڌ جي هدايتن موجب سڀني شاگردن لاءِ 75 سيڪڙو حاضري لازمي آهي۔ جيڪڏهن ڪو شاگرد/شاگردياڻي مسلسل 3 ڏينهن دير سان ڪاليج ايندو/ايندي ته سندس نالو ڪاليج مان خارج ڪيو ويندو۔';
 
-    if (!config.messageTemplate || config.messageTemplate.includes('Mohtaram')) {
+    if (!config.messageTemplate || config.messageTemplate.includes('Mohtaram') || !config.messageTemplate.includes('سيڪريٽري')) {
       config.messageTemplate = SINDHI_DEFAULT_TEMPLATE;
       await config.save();
     }

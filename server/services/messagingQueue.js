@@ -83,14 +83,14 @@ class MessagingQueue {
         const isFemale = student?.gender === 'Female';
         const relation = isFemale ? 'توهان جي نياڻي' : 'توهان جو پٽ';
 
-        // Build personalized template with father name and gender-based son/daughter relation
+        // Build personalized template with flexible case-insensitive tags ({name}, {fathername}, {relationship}, {date}, etc.)
         let messageText = (config.messageTemplate || '')
-          .replace(/{FATHER_NAME}/g, fatherName)
-          .replace(/{RELATION}/g, relation)
-          .replace(/{STUDENT_NAME}/g, record.studentName)
-          .replace(/{ROLL_NO}/g, record.rollNo)
-          .replace(/{CLASS_NAME}/g, className)
-          .replace(/{DATE}/g, todayDate);
+          .replace(/{(?:STUDENT_NAME|STUDENT|NAME)}/gi, record.studentName)
+          .replace(/{(?:FATHER_NAME|FATHERNAME|FATHER)}/gi, fatherName)
+          .replace(/{(?:RELATION|RELATIONSHIP)}/gi, relation)
+          .replace(/{(?:ROLL_NO|ROLLNO|ROLL)}/gi, record.rollNo)
+          .replace(/{(?:CLASS_NAME|CLASSNAME|CLASS)}/gi, className)
+          .replace(/{DATE}/gi, todayDate);
 
         // Auto-adapt if template contains legacy "Mohtaram Walid" or static "apka farzand"
         if (messageText.includes('Mohtaram Walid')) {
