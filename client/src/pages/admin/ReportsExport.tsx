@@ -149,7 +149,7 @@ export const ReportsExport: React.FC = () => {
               </div>
               <h3 className="text-base font-black text-slate-900 mb-2">Database Cleanliness Policy</h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                To guarantee your MongoDB Atlas free-tier cluster remains well under 512 MB forever, attendance logs
+                To guarantee Database remains well forever, attendance logs
                 older than <strong>730 days (2 years)</strong> are automatically pruned every month.
               </p>
 
