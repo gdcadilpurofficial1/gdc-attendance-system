@@ -6,6 +6,7 @@ import AttendanceSession from '../models/AttendanceSession.js';
 import User from '../models/User.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { migrateTo4Cohorts } from '../services/cohortMigration.js';
+import { seed4CohortsAndStudents } from '../services/seedCollegeService.js';
 
 const router = express.Router();
 
@@ -250,13 +251,27 @@ router.delete('/classes/:id', protect, authorize('admin', 'principal'), async (r
   }
 });
 
-// @route   POST /api/academic/migrate-cohorts (Admin only - Consolidate into 4 Cohorts: XI Boys, XI Girls, XII Boys, XII Girls)
+// @route   POST /api/academic/migrate-cohorts (Admin only - Initialize 4 Cohorts & 384 Students)
 router.post('/migrate-cohorts', protect, authorize('admin', 'principal'), async (req, res, next) => {
   try {
-    const result = await migrateTo4Cohorts();
+    const result = await seed4CohortsAndStudents();
     res.json({
       success: true,
-      message: 'Successfully migrated academic hierarchy to 4 cohorts: XI Boys, XI Girls, XII Boys, XII Girls.',
+      message: 'Successfully initialized 4 cohorts and 384 students: XI Boys (133), XI Girls (52), XII Boys (192), XII Girls (7).',
+      result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/academic/seed-4-cohorts (Admin only)
+router.post('/seed-4-cohorts', protect, authorize('admin', 'principal'), async (req, res, next) => {
+  try {
+    const result = await seed4CohortsAndStudents();
+    res.json({
+      success: true,
+      message: 'Successfully initialized 4 cohorts and 384 students.',
       result,
     });
   } catch (error) {

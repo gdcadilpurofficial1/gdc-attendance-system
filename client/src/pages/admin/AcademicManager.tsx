@@ -113,7 +113,7 @@ export const AcademicManager: React.FC = () => {
   const handleMigrateCohorts = async () => {
     if (
       !window.confirm(
-        'Consolidate academic structure into 4 cohorts (XI Boys, XI Girls, XII Boys, XII Girls)?\n\nAll enrolled students will be neatly organized into these 4 classes, and teachers will be assigned to all 4 classes.'
+        'Initialize the 4 official cohorts (XI Boys, XI Girls, XII Boys, XII Girls) and enroll all 384 college students with collision-free sequential roll numbers?\n\nThis will establish the exact 4 classes/programs and assign them to all faculty.'
       )
     ) {
       return;
@@ -123,11 +123,11 @@ export const AcademicManager: React.FC = () => {
     try {
       const res = await api.post('/academic/migrate-cohorts');
       if (res.data.success) {
-        toast.success('Successfully consolidated into 4 cohorts!');
+        toast.success('Successfully initialized 4 cohorts and enrolled 384 students!');
         loadData();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Cohort consolidation failed.');
+      toast.error(err.response?.data?.message || 'Initialization failed.');
     } finally {
       setMigratingCohorts(false);
     }
@@ -333,10 +333,10 @@ export const AcademicManager: React.FC = () => {
             onClick={handleMigrateCohorts}
             disabled={migratingCohorts}
             className="px-3.5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-            title="Consolidate all students into 4 cohorts: XI Boys, XI Girls, XII Boys, XII Girls"
+            title="Initialize 4 Cohorts (XI Boys, XI Girls, XII Boys, XII Girls) with all 384 students"
           >
             <Sparkles className={`w-4 h-4 ${migratingCohorts ? 'animate-spin' : ''}`} />
-            <span>{migratingCohorts ? 'Consolidating...' : 'Consolidate 4 Cohorts'}</span>
+            <span>{migratingCohorts ? 'Initializing...' : 'Setup 4 Cohorts (384 Students)'}</span>
           </button>
 
           <button
