@@ -42,7 +42,6 @@ export const AcademicManager: React.FC = () => {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState<boolean>(true);
-  const [migratingCohorts, setMigratingCohorts] = useState<boolean>(false);
 
   // Program Modal State
   const [showProgramModal, setShowProgramModal] = useState<boolean>(false);
@@ -107,29 +106,6 @@ export const AcademicManager: React.FC = () => {
       toast.error('Failed to load academic data.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMigrateCohorts = async () => {
-    if (
-      !window.confirm(
-        'Initialize the 4 official cohorts (XI Boys, XI Girls, XII Boys, XII Girls) and enroll all 384 college students with collision-free sequential roll numbers?\n\nThis will establish the exact 4 classes/programs and assign them to all faculty.'
-      )
-    ) {
-      return;
-    }
-
-    setMigratingCohorts(true);
-    try {
-      const res = await api.post('/academic/migrate-cohorts');
-      if (res.data.success) {
-        toast.success('Successfully initialized 4 cohorts and enrolled 384 students!');
-        loadData();
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Initialization failed.');
-    } finally {
-      setMigratingCohorts(false);
     }
   };
 
@@ -329,16 +305,6 @@ export const AcademicManager: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleMigrateCohorts}
-            disabled={migratingCohorts}
-            className="px-3.5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-            title="Initialize 4 Cohorts (XI Boys, XI Girls, XII Boys, XII Girls) with all 384 students"
-          >
-            <Sparkles className={`w-4 h-4 ${migratingCohorts ? 'animate-spin' : ''}`} />
-            <span>{migratingCohorts ? 'Initializing...' : 'Setup 4 Cohorts (384 Students)'}</span>
-          </button>
-
           <button
             onClick={openAddProgram}
             className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
