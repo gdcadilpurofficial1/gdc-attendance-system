@@ -22,6 +22,7 @@ import reportRoutes from './routes/reportRoutes.js';
 import { startKeepAlive } from './utils/keepAlive.js';
 import { initRetentionScheduler } from './services/retentionService.js';
 import { initWhatsAppIfSessionExists } from './services/whatsappService.js';
+import { migrateTo4Cohorts } from './services/cohortMigration.js';
 
 dotenv.config();
 
@@ -112,6 +113,11 @@ app.listen(PORT, () => {
 
   // Auto-reconnect WhatsApp if previously authenticated session exists
   initWhatsAppIfSessionExists();
+
+  // Run cohort consolidation (XI Boys, XI Girls, XII Boys, XII Girls)
+  migrateTo4Cohorts().catch((err) => {
+    console.error('⚠️ [COHORT MIGRATION] Startup check error:', err?.message || err);
+  });
 });
 
 export default app;

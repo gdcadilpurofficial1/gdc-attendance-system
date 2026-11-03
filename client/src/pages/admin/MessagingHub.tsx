@@ -9,6 +9,9 @@ import {
   Sliders,
   Unlink,
   MessageCircle,
+  Smartphone,
+  ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -27,6 +30,14 @@ export const MessagingHub: React.FC = () => {
   const [intervalSecs, setIntervalSecs] = useState<number>(18);
   const [channel, setChannel] = useState<string>('WHATSAPP');
   const [template, setTemplate] = useState<string>('');
+
+  // Capcom6 Android SMS Gateway State
+  const [smsLogin, setSmsLogin] = useState<string>('');
+  const [smsPassword, setSmsPassword] = useState<string>('');
+  const [smsEndpoint, setSmsEndpoint] = useState<string>('https://api.sms-gate.app/3rdparty/v1');
+  const [showAdvancedSms, setShowAdvancedSms] = useState<boolean>(false);
+  const [testPhone, setTestPhone] = useState<string>('');
+  const [sendingTestSms, setSendingTestSms] = useState<boolean>(false);
 
   useEffect(() => {
     loadInitialConfig();
@@ -66,6 +77,8 @@ export const MessagingHub: React.FC = () => {
         setIntervalSecs(res.data.config.dispatchIntervalSeconds || 18);
         setChannel(res.data.config.defaultChannel || 'WHATSAPP');
         setTemplate(res.data.config.messageTemplate || '');
+        setSmsLogin(res.data.config.smsCapcomLogin || '');
+        setSmsEndpoint(res.data.config.smsGatewayEndpoint || 'https://api.sms-gate.app/3rdparty/v1');
       }
     } catch {
       // ignore
@@ -122,6 +135,49 @@ export const MessagingHub: React.FC = () => {
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Save failed.');
+    }
+  };
+
+  const handleSaveSmsGateway = async () => {
+    try {
+      const payload: any = {
+        smsCapcomLogin: smsLogin.trim(),
+        smsGatewayEndpoint: smsEndpoint.trim() || 'https://api.sms-gate.app/3rdparty/v1',
+      };
+      if (smsPassword.trim()) {
+        payload.smsCapcomPassword = smsPassword.trim();
+      }
+
+      const res = await api.put('/messaging/config', payload);
+      if (res.data.success) {
+        toast.success('Capcom6 SMS Gateway credentials saved successfully!');
+        setSmsPassword('');
+        pollQueueUpdates();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save SMS Gateway credentials.');
+    }
+  };
+
+  const handleSendTestSms = async () => {
+    if (!testPhone.trim()) {
+      toast.error('Please enter a recipient phone number for the test SMS.');
+      return;
+    }
+
+    setSendingTestSms(true);
+    try {
+      const res = await api.post('/messaging/test-sms', {
+        phone: testPhone.trim(),
+        message: 'Govt Degree College Adilpur: Test alert verifying Capcom6 Android SMS Gateway connectivity.',
+      });
+      if (res.data.success) {
+        toast.success(res.data.message || 'Test SMS sent successfully!');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to dispatch test SMS. Verify phone connection.');
+    } finally {
+      setSendingTestSms(false);
     }
   };
 
@@ -215,18 +271,18 @@ export const MessagingHub: React.FC = () => {
       </div>
 
       {/* Gateway Connection Advisory Alert */}
-      {!config?.whatsappLinked && (
+      {!config?.whatsappLinked && !config?.smsCapcomConfigured && (
         <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-              <QrCode className="w-5 h-5 text-amber-700" />
+              <AlertCircle className="w-5 h-5 text-amber-700" />
             </div>
             <div>
               <h3 className="font-bold text-amber-950 text-sm">
-                WhatsApp Gateway Not Linked
+                No Dispatch Gateway Connected
               </h3>
               <p className="text-xs text-amber-800 mt-0.5">
-                Scan the QR code below using the college office smartphone, or configure the Android SIM SMS Gateway so queued absentee alerts dispatch automatically.
+                Neither WhatsApp nor Capcom6 Android SMS Gateway is currently connected. Connect either one below so that absentee notices dispatch automatically upon marking attendance.
               </p>
             </div>
           </div>
@@ -362,62 +418,136 @@ export const MessagingHub: React.FC = () => {
           </div>
         </div>
 
-        {/* Channel 2: Local Android SIM SMS Gateway */}
+        {/* Channel 2: Capcom6 Android SIM SMS Gateway */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="text-indigo-600 font-black text-sm">Channel 2</span>
-                <h3 className="font-black text-slate-900 text-lg">Office Android SIM SMS</h3>
+                <h3 className="font-black text-slate-900 text-lg">Office Android SIM Gateway</h3>
               </div>
-              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg">
-                Reaches Basic Keypad Phones
+              <span
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border ${
+                  config?.smsCapcomConfigured
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                }`}
+              >
+                {config?.smsCapcomConfigured ? '● Configured & Ready' : '○ Not Linked'}
               </span>
             </div>
 
             <p className="text-xs text-slate-500 leading-relaxed">
-              Use a spare Android phone in the college office with an unlimited Jazz/Zong SMS package. It automatically
-              dispatches cellular SMS to parents who don't have WhatsApp.
+              Use your office Android phone with Capcom6 (<code>app-release.apk</code>) to send cellular SMS to keypad phones via Jazz/Zong package.
             </p>
 
-            <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3 text-xs">
-              <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">
-                  Poll Endpoint (Paste in Android App)
-                </span>
-                <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 font-mono text-[11px] text-slate-800 mt-1">
-                  <span className="truncate">https://gdc-attendance-api.onrender.com/api/sms/poll</span>
-                  <button
-                    onClick={() => copyToClipboard('https://gdc-attendance-api.onrender.com/api/sms/poll')}
-                    className="p-1 text-slate-400 hover:text-slate-700"
+            {/* Step-by-Step Instructions */}
+            <div className="mt-4 p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-2 text-xs">
+              <div className="font-black text-indigo-950 flex items-center gap-1.5 text-xs">
+                <Smartphone className="w-4 h-4 text-indigo-600" />
+                <span>How to Link Capcom6 (app-release.apk):</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1 text-slate-700 text-[11px] leading-relaxed">
+                <li>
+                  Open{' '}
+                  <a
+                    href="https://sms-gate.app"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold text-indigo-700 underline inline-flex items-center gap-0.5"
                   >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    sms-gate.app <ExternalLink className="w-3 h-3" />
+                  </a>{' '}
+                  on laptop/phone &amp; sign in (free).
+                </li>
+                <li>
+                  Click <strong>"Add Device"</strong>. A pairing <strong>QR Code</strong> will appear on screen.
+                </li>
+                <li>
+                  Open the <strong>Capcom6 app</strong> on Android, tap <strong>"Scan QR Code"</strong> and scan the screen!
+                </li>
+                <li>
+                  Copy the <strong>Device Login</strong> and <strong>Password</strong> generated by sms-gate.app and paste below:
+                </li>
+              </ol>
+            </div>
+
+            {/* Credentials Form */}
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Capcom6 Device Login (Username)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. device_usr_abc123"
+                  value={smsLogin}
+                  onChange={(e) => setSmsLogin(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:bg-white focus:outline-indigo-500"
+                />
               </div>
 
               <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">
-                  Gateway API Secret Key
-                </span>
-                <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 font-mono text-[11px] text-slate-800 mt-1">
-                  <span>{config?.smsGatewayApiKey || 'gdc_sms_secret_2026'}</span>
-                  <button
-                    onClick={() => copyToClipboard(config?.smsGatewayApiKey || 'gdc_sms_secret_2026')}
-                    className="p-1 text-slate-400 hover:text-slate-700"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Capcom6 Device Password / Token
+                </label>
+                <input
+                  type="password"
+                  placeholder={config?.smsCapcomConfigured ? '•••••••••••••••• (Leave blank to keep current)' : 'Enter device password'}
+                  value={smsPassword}
+                  onChange={(e) => setSmsPassword(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:bg-white focus:outline-indigo-500"
+                />
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedSms(!showAdvancedSms)}
+                  className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{showAdvancedSms ? '▾ Hide' : '▸ Show'} Server Endpoint</span>
+                </button>
+                {showAdvancedSms && (
+                  <input
+                    type="text"
+                    value={smsEndpoint}
+                    onChange={(e) => setSmsEndpoint(e.target.value)}
+                    className="mt-1.5 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono text-slate-700"
+                  />
+                )}
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <span className="text-[11px] text-slate-500">
-              App to install on phone: <strong>"Android SMS Gateway"</strong> (Open source APK from GitHub / Play
-              Store).
-            </span>
+          {/* Test SMS Sender & Save Button */}
+          <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="Test phone (e.g. 03073614973)"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+              />
+              <button
+                type="button"
+                onClick={handleSendTestSms}
+                disabled={sendingTestSms || !testPhone}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Send className={`w-3.5 h-3.5 ${sendingTestSms ? 'animate-pulse' : ''}`} />
+                <span>{sendingTestSms ? 'Sending...' : 'Test SMS'}</span>
+              </button>
+            </div>
+
+            <button
+              onClick={handleSaveSmsGateway}
+              className="w-full py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Save SMS Gateway Settings</span>
+            </button>
           </div>
         </div>
       </div>
@@ -438,7 +568,7 @@ export const MessagingHub: React.FC = () => {
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
             >
               <option value="WHATSAPP">WhatsApp Web Bot (Default)</option>
-              <option value="SMS_GATEWAY">Local SIM SMS Gateway</option>
+              <option value="SMS_GATEWAY">Office Android SIM Gateway (Capcom6)</option>
             </select>
           </div>
 

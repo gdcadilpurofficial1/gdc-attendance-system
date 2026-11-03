@@ -42,6 +42,7 @@ export const AcademicManager: React.FC = () => {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState<boolean>(true);
+  const [migratingCohorts, setMigratingCohorts] = useState<boolean>(false);
 
   // Program Modal State
   const [showProgramModal, setShowProgramModal] = useState<boolean>(false);
@@ -106,6 +107,29 @@ export const AcademicManager: React.FC = () => {
       toast.error('Failed to load academic data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMigrateCohorts = async () => {
+    if (
+      !window.confirm(
+        'Consolidate academic structure into 4 cohorts (XI Boys, XI Girls, XII Boys, XII Girls)?\n\nAll enrolled students will be neatly organized into these 4 classes, and teachers will be assigned to all 4 classes.'
+      )
+    ) {
+      return;
+    }
+
+    setMigratingCohorts(true);
+    try {
+      const res = await api.post('/academic/migrate-cohorts');
+      if (res.data.success) {
+        toast.success('Successfully consolidated into 4 cohorts!');
+        loadData();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Cohort consolidation failed.');
+    } finally {
+      setMigratingCohorts(false);
     }
   };
 
@@ -305,6 +329,16 @@ export const AcademicManager: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleMigrateCohorts}
+            disabled={migratingCohorts}
+            className="px-3.5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            title="Consolidate all students into 4 cohorts: XI Boys, XI Girls, XII Boys, XII Girls"
+          >
+            <Sparkles className={`w-4 h-4 ${migratingCohorts ? 'animate-spin' : ''}`} />
+            <span>{migratingCohorts ? 'Consolidating...' : 'Consolidate 4 Cohorts'}</span>
+          </button>
+
           <button
             onClick={openAddProgram}
             className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"

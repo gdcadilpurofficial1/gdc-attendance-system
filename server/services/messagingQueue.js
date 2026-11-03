@@ -3,6 +3,7 @@ import SystemConfig from '../models/SystemConfig.js';
 import AttendanceSession from '../models/AttendanceSession.js';
 import Student from '../models/Student.js';
 import { sendWhatsAppMessage, isWhatsAppConnected } from './whatsappService.js';
+import { sendCapcomSms } from './smsService.js';
 
 class MessagingQueue {
   constructor() {
@@ -41,11 +42,11 @@ class MessagingQueue {
       const className = session.classSectionId?.name || 'Class';
       const todayDate = session.date;
 
-      // Determine active channel: WhatsApp, SMS Gateway, or Both
-      let activeChannel = config.defaultChannel || 'WHATSAPP';
-      const hasWhatsApp = Boolean(config.whatsappLinked);
-      const hasSms = Boolean(config.smsGatewayApiKey);
+      // Determine active channel: WhatsApp, SMS Gateway, or Default
+      const hasWhatsApp = Boolean(config.whatsappLinked && isWhatsAppConnected());
+      const hasSms = Boolean(config.smsCapcomLogin && config.smsCapcomPassword);
 
+      let activeChannel = config.defaultChannel || 'WHATSAPP';
       if (hasWhatsApp && !hasSms) {
         activeChannel = 'WHATSAPP';
       } else if (!hasWhatsApp && hasSms) {
@@ -80,7 +81,7 @@ class MessagingQueue {
         // Retrieve student's fatherName and gender
         const student = await Student.findById(record.studentId).select('fatherName gender');
         const fatherName = student?.fatherName || 'والد';
-        const isFemale = student?.gender === 'Female';
+        const isFemale = String(student?.gender || '').toLowerCase() === 'female';
         const relation = isFemale ? 'توهان جي نياڻي' : 'توهان جو پٽ';
 
         // Build personalized template with flexible case-insensitive tags ({name}, {fathername}, {relationship}, {date}, etc.)
@@ -92,7 +93,7 @@ class MessagingQueue {
           .replace(/{(?:CLASS_NAME|CLASSNAME|CLASS)}/gi, className)
           .replace(/{DATE}/gi, todayDate);
 
-        // Auto-adapt if template contains legacy "Mohtaram Walid" or static "apka farzand"
+        // Auto-adapt if template contains legacy phrases
         if (messageText.includes('Mohtaram Walid')) {
           messageText = messageText.replace(/Mohtaram Walid/g, `Mohtaram ${fatherName}`);
         }
@@ -161,7 +162,7 @@ class MessagingQueue {
           `🚀 [DISPATCH] Sending to ${log.studentName} (${log.recipientPhone}) via ${log.channel}. Queue remaining: ${this.queue.length}`
         );
 
-        // Dispatch via WhatsApp or SMS Gateway
+        // Dispatch via WhatsApp or Capcom6 SMS Gateway
         if (log.channel === 'WHATSAPP') {
           if (isWhatsAppConnected()) {
             try {
@@ -179,16 +180,24 @@ class MessagingQueue {
             log.status = 'FAILED';
             log.errorMessage = 'WhatsApp bot not linked. Use 1-Click WhatsApp or connect phone in Messaging Hub.';
           }
-        } else {
-          // Android SMS Gateway or local SIM mode
-          log.status = 'SENT';
-          log.sentAt = new Date();
+        } else if (log.channel === 'SMS_GATEWAY') {
+          try {
+            await sendCapcomSms(log.recipientPhone, log.messageText);
+            log.status = 'SENT';
+            log.sentAt = new Date();
+            console.log(`✅ [SMS GATEWAY] Delivered SMS alert to ${log.recipientPhone} (${log.studentName})`);
+          } catch (smsErr) {
+            console.error(`❌ [SMS GATEWAY] Failed to send to ${log.recipientPhone}:`, smsErr.message);
+            log.status = 'FAILED';
+            log.errorMessage = smsErr.message;
+          }
         }
+
         await log.save();
 
         // Safe pacing throttle (18s) to prevent Telco SIM or WhatsApp ban
         if (this.queue.length > 0) {
-          console.log(`⏳ Pacer: Waiting ${config.dispatchIntervalSeconds}s before next message...`);
+          console.log(`⏳ Pacer: Waiting ${config.dispatchIntervalSeconds || 18}s before next message...`);
           await this.sleep(intervalMs);
         }
       }

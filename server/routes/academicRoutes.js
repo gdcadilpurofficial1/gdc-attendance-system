@@ -5,6 +5,7 @@ import Student from '../models/Student.js';
 import AttendanceSession from '../models/AttendanceSession.js';
 import User from '../models/User.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { migrateTo4Cohorts } from '../services/cohortMigration.js';
 
 const router = express.Router();
 
@@ -244,6 +245,20 @@ router.delete('/classes/:id', protect, authorize('admin', 'principal'), async (r
     if (!deleted) return res.status(404).json({ success: false, message: 'Class section not found.' });
 
     res.json({ success: true, message: 'Class section deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/academic/migrate-cohorts (Admin only - Consolidate into 4 Cohorts: XI Boys, XI Girls, XII Boys, XII Girls)
+router.post('/migrate-cohorts', protect, authorize('admin', 'principal'), async (req, res, next) => {
+  try {
+    const result = await migrateTo4Cohorts();
+    res.json({
+      success: true,
+      message: 'Successfully migrated academic hierarchy to 4 cohorts: XI Boys, XI Girls, XII Boys, XII Girls.',
+      result,
+    });
   } catch (error) {
     next(error);
   }

@@ -6,6 +6,27 @@ const systemConfigSchema = new mongoose.Schema(
       type: String,
       default: () => 'gdc_sms_' + Math.random().toString(36).substring(2, 12),
     },
+    // Capcom6 Android SMS Gateway Integration
+    smsProvider: {
+      type: String,
+      enum: ['CAPCOM6_CLOUD', 'CAPCOM6_LOCAL', 'CUSTOM_POLL'],
+      default: 'CAPCOM6_CLOUD',
+    },
+    smsCapcomLogin: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    smsCapcomPassword: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    smsGatewayEndpoint: {
+      type: String,
+      default: 'https://api.sms-gate.app/3rdparty/v1',
+      trim: true,
+    },
     autoSendOnSubmit: {
       type: Boolean,
       default: true,

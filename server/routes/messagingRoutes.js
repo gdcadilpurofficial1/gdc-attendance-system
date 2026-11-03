@@ -8,6 +8,7 @@ import {
   unlinkWhatsAppDevice,
   isWhatsAppConnected,
 } from '../services/whatsappService.js';
+import { sendCapcomSms } from '../services/smsService.js';
 
 const router = express.Router();
 
@@ -44,6 +45,10 @@ router.get('/status', protect, async (req, res, next) => {
         whatsappLinked: Boolean(config.whatsappLinked || isConnected),
         whatsappPhone: config.whatsappPhone,
         smsGatewayApiKey: config.smsGatewayApiKey,
+        smsProvider: config.smsProvider || 'CAPCOM6_CLOUD',
+        smsCapcomLogin: config.smsCapcomLogin || '',
+        smsCapcomConfigured: Boolean(config.smsCapcomLogin && config.smsCapcomPassword),
+        smsGatewayEndpoint: config.smsGatewayEndpoint || 'https://api.sms-gate.app/3rdparty/v1',
         messageTemplate: config.messageTemplate,
       },
       stats: {
@@ -62,15 +67,71 @@ router.put('/config', protect, authorize('admin', 'principal'), async (req, res,
     let config = await SystemConfig.findOne();
     if (!config) config = new SystemConfig();
 
-    const allowed = ['autoSendOnSubmit', 'dispatchIntervalSeconds', 'defaultChannel', 'messageTemplate'];
+    const allowed = [
+      'autoSendOnSubmit',
+      'dispatchIntervalSeconds',
+      'defaultChannel',
+      'messageTemplate',
+      'smsProvider',
+      'smsCapcomLogin',
+      'smsCapcomPassword',
+      'smsGatewayEndpoint',
+    ];
+
     for (const key of allowed) {
-      if (req.body[key] !== undefined) config[key] = req.body[key];
+      if (req.body[key] !== undefined) {
+        // If password is sent as empty string or whitespace only, don't overwrite existing
+        if (key === 'smsCapcomPassword' && typeof req.body[key] === 'string' && !req.body[key].trim()) {
+          continue;
+        }
+        config[key] = req.body[key];
+      }
     }
 
     await config.save();
-    res.json({ success: true, message: 'Messaging configuration updated successfully', config });
+    res.json({
+      success: true,
+      message: 'Messaging configuration updated successfully',
+      config: {
+        autoSendOnSubmit: config.autoSendOnSubmit,
+        dispatchIntervalSeconds: config.dispatchIntervalSeconds,
+        defaultChannel: config.defaultChannel,
+        whatsappLinked: config.whatsappLinked,
+        smsProvider: config.smsProvider,
+        smsCapcomLogin: config.smsCapcomLogin,
+        smsCapcomConfigured: Boolean(config.smsCapcomLogin && config.smsCapcomPassword),
+        smsGatewayEndpoint: config.smsGatewayEndpoint,
+        messageTemplate: config.messageTemplate,
+      },
+    });
   } catch (error) {
     next(error);
+  }
+});
+
+// @route   POST /api/messaging/test-sms (Admin only - Send immediate test SMS via Capcom6)
+router.post('/test-sms', protect, authorize('admin', 'principal'), async (req, res, next) => {
+  try {
+    const { phone, message } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Recipient phone number is required.' });
+    }
+
+    const testMessage =
+      message ||
+      'Govt Degree College Adilpur: This is a test SMS verifying Capcom6 Android SMS Gateway connectivity.';
+
+    const result = await sendCapcomSms(phone, testMessage);
+    res.json({
+      success: true,
+      message: `Test SMS dispatched successfully to ${result.phone}! Check recipient and phone SIM log.`,
+      result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to dispatch test SMS.',
+    });
   }
 });
 
