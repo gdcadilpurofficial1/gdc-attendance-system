@@ -2,7 +2,7 @@ import SystemConfig from '../models/SystemConfig.js';
 
 /**
  * Normalizes any Pakistani mobile number format to standard E.164 (+923...)
- * Handles: 03073614973, 3073614973, +923073614973, 923073614973, 00923073614973
+ * Handles: 03073614973, 3073614973, +923073614973, 923073614973, 00923073614973, 0308-5265439
  */
 export const formatPakistanPhone = (phone) => {
   if (!phone) return '';
@@ -32,9 +32,14 @@ export const formatPakistanPhone = (phone) => {
  * Sends an SMS through Capcom6 Android SMS Gateway (Cloud or Local mode)
  * Official endpoint: https://api.sms-gate.app/3rdparty/v1/message (or /messages)
  */
-export const sendCapcomSms = async (recipientPhone, messageText) => {
+export const sendCapcomSms = async (recipientPhone, messageText, overrideConfig = {}) => {
   const config = await SystemConfig.findOne();
-  if (!config || !config.smsCapcomLogin || !config.smsCapcomPassword) {
+
+  const login = (overrideConfig.login || config?.smsCapcomLogin || '').trim();
+  const password = (overrideConfig.password || config?.smsCapcomPassword || '').trim();
+  const rawBase = (overrideConfig.endpoint || config?.smsGatewayEndpoint || 'https://api.sms-gate.app/3rdparty/v1').trim().replace(/\/+$/, '');
+
+  if (!login || !password) {
     throw new Error(
       'Capcom6 SMS Gateway is not configured. Please enter your Device Login and Password in Messaging Hub.'
     );
@@ -45,16 +50,14 @@ export const sendCapcomSms = async (recipientPhone, messageText) => {
     throw new Error(`Invalid phone number format: "${recipientPhone}"`);
   }
 
-  const rawBase = (config.smsGatewayEndpoint || 'https://api.sms-gate.app/3rdparty/v1').replace(/\/+$/, '');
-  
-  // Capcom6 supports both /message and /messages
+  // Capcom6 accepts POST to /message or /messages
   const endpoint = rawBase.endsWith('/message') || rawBase.endsWith('/messages')
     ? rawBase
     : `${rawBase}/message`;
 
-  const authHeader = 'Basic ' + Buffer.from(`${config.smsCapcomLogin}:${config.smsCapcomPassword}`).toString('base64');
+  const authHeader = 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64');
 
-  // Payload supports both modern textMessage object and legacy message string
+  // Payload supports modern textMessage object and fallback message string
   const payload = {
     textMessage: {
       text: messageText,
@@ -98,6 +101,7 @@ export const sendCapcomSms = async (recipientPhone, messageText) => {
       success: true,
       data: responseBody,
       phone: formattedPhone,
+      usedLogin: login,
     };
   } catch (err) {
     clearTimeout(timeoutId);

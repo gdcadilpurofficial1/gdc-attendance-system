@@ -112,16 +112,31 @@ router.put('/config', protect, authorize('admin', 'principal'), async (req, res,
 // @route   POST /api/messaging/test-sms (Admin only - Send immediate test SMS via Capcom6)
 router.post('/test-sms', protect, authorize('admin', 'principal'), async (req, res, next) => {
   try {
-    const { phone, message } = req.body;
+    const { phone, message, login, password, endpoint } = req.body;
     if (!phone) {
       return res.status(400).json({ success: false, message: 'Recipient phone number is required.' });
     }
 
     const testMessage =
       message ||
-      'Govt Degree College Adilpur: This is a test SMS verifying Capcom6 Android SMS Gateway connectivity.';
+      'Govt Degree College Adilpur: Test alert verifying Capcom6 Android SMS Gateway connectivity.';
 
-    const result = await sendCapcomSms(phone, testMessage);
+    const overrideConfig = {};
+    if (login) overrideConfig.login = login.trim();
+    if (password) overrideConfig.password = password.trim();
+    if (endpoint) overrideConfig.endpoint = endpoint.trim();
+
+    const result = await sendCapcomSms(phone, testMessage, overrideConfig);
+
+    // If test succeeded and login/password were supplied, auto-save them into SystemConfig
+    if (login && password) {
+      let config = (await SystemConfig.findOne()) || new SystemConfig();
+      config.smsCapcomLogin = login.trim();
+      config.smsCapcomPassword = password.trim();
+      if (endpoint) config.smsGatewayEndpoint = endpoint.trim();
+      await config.save();
+    }
+
     res.json({
       success: true,
       message: `Test SMS dispatched successfully to ${result.phone}! Check recipient and phone SIM log.`,
