@@ -33,7 +33,10 @@ export const formatPakistanPhone = (phone) => {
  * Official endpoint: https://api.sms-gate.app/3rdparty/v1/message (or /messages)
  */
 export const sendCapcomSms = async (recipientPhone, messageText, overrideConfig = {}) => {
-  const config = await SystemConfig.findOne();
+  let config = null;
+  if (!overrideConfig.login || !overrideConfig.password || !overrideConfig.endpoint) {
+    config = await SystemConfig.findOne();
+  }
 
   const login = (overrideConfig.login || config?.smsCapcomLogin || '').trim();
   const password = (overrideConfig.password || config?.smsCapcomPassword || '').trim();
@@ -57,11 +60,8 @@ export const sendCapcomSms = async (recipientPhone, messageText, overrideConfig 
 
   const authHeader = 'Basic ' + Buffer.from(`${login}:${password}`).toString('base64');
 
-  // Payload supports modern textMessage object and fallback message string
+  // Capcom6 schema requires exactly ONE of: message / textMessage, dataMessage, or mmsMessage
   const payload = {
-    textMessage: {
-      text: messageText,
-    },
     message: messageText,
     phoneNumbers: [formattedPhone],
   };
