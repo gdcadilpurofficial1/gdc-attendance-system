@@ -229,7 +229,7 @@ export const AdminSettings: React.FC = () => {
               </div>
 
               {/* Password Requirements Checklist */}
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px] space-y-1.5">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs space-y-1.5">
                 <span className="font-bold text-slate-700 block mb-1">Security Checklist:</span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div className={`flex items-center gap-1.5 font-medium ${hasMinLength ? 'text-emerald-700' : 'text-slate-400'}`}>
@@ -296,7 +296,7 @@ export const AdminSettings: React.FC = () => {
                     value={user?.username || ''}
                     className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500 cursor-not-allowed"
                   />
-                  <span className="text-[10px] text-slate-400 mt-1 block">Primary login identifier (managed by college IT)</span>
+                  <span className="text-xs text-slate-400 mt-1 block">Primary login identifier (managed by college IT)</span>
                 </div>
 
                 <div>
@@ -365,22 +365,22 @@ export const AdminSettings: React.FC = () => {
 
             <div className="space-y-3.5 text-xs">
               <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">College Name</span>
+                <span className="block text-xs font-bold text-slate-400 uppercase">College Name</span>
                 <span className="font-bold text-slate-800">Govt. Degree College Adilpur</span>
               </div>
 
               <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Affiliation</span>
+                <span className="block text-xs font-bold text-slate-400 uppercase">Affiliation</span>
                 <span className="font-semibold text-slate-700">BISE Sukkur • Higher Education Sindh</span>
               </div>
 
               <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Official Subdomain</span>
+                <span className="block text-xs font-bold text-slate-400 uppercase">Official Subdomain</span>
                 <span className="font-mono text-indigo-700 font-bold">attendance.gdcadilpur.edu.pk</span>
               </div>
 
               <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Operational Window</span>
+                <span className="block text-xs font-bold text-slate-400 uppercase">Operational Window</span>
                 <div className="flex items-center gap-1.5 text-emerald-700 font-bold mt-0.5">
                   <Clock className="w-3.5 h-3.5" />
                   <span>7:00 AM – 6:00 PM PKT (Zero Cold Start)</span>
@@ -388,7 +388,7 @@ export const AdminSettings: React.FC = () => {
               </div>
 
               <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Data Retention Policy</span>
+                <span className="block text-xs font-bold text-slate-400 uppercase">Data Retention Policy</span>
                 <span className="font-semibold text-slate-700">2-Year Rolling Auto-Cleanup Active</span>
               </div>
             </div>
@@ -397,7 +397,7 @@ export const AdminSettings: React.FC = () => {
           {/* Quick Module Shortcuts */}
           <div className="bg-indigo-950 text-white rounded-3xl p-6 shadow-md relative overflow-hidden">
             <div className="relative z-10">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">Quick Configuration</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">Quick Configuration</span>
               <h3 className="text-base font-black text-white mt-1 mb-2">Automated Messaging</h3>
               <p className="text-xs text-indigo-200 mb-5">
                 Configure your active WhatsApp Bot noise-handshake or Android SMS SIM Gateway secret key.

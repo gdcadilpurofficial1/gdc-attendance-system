@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import * as XLSX from 'xlsx';
 import {
   UserPlus,
@@ -124,9 +125,18 @@ export const StudentManager: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to remove ${name} from the student records?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [bulkPreviewRows, setBulkPreviewRows] = useState<any[]>([]);
+  const [bulkColumnErrors, setBulkColumnErrors] = useState<string[]>([]);
 
+  const handleDelete = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const { id } = deleteTarget;
+    setDeleteTarget(null);
     try {
       const res = await api.delete(`/students/${id}`);
       if (res.data.success) {
@@ -166,6 +176,46 @@ export const StudentManager: React.FC = () => {
     }
   };
 
+  const handleBulkFileSelect = (file: File | null) => {
+    setBulkFile(file);
+    setBulkPreviewRows([]);
+    setBulkColumnErrors([]);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+        if (!data || data.length === 0) {
+          setBulkColumnErrors(['The uploaded sheet contains no data rows.']);
+          return;
+        }
+
+        const keys = Object.keys(data[0]).map((k) => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        const errors: string[] = [];
+        if (!keys.some((k) => k.includes('roll'))) errors.push('Missing RollNo column');
+        if (!keys.some((k) => k === 'name' || k.includes('fullname') || k.includes('studentname'))) {
+          errors.push('Missing Name / FullName column');
+        }
+        if (!keys.some((k) => k.includes('father'))) errors.push('Missing FatherName column');
+        if (!keys.some((k) => k.includes('phone') || k.includes('mobile'))) {
+          errors.push('Missing ParentPhone / Mobile column');
+        }
+
+        setBulkColumnErrors(errors);
+        setBulkPreviewRows(data);
+      } catch {
+        setBulkColumnErrors(['Could not parse the selected Excel or CSV file.']);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   // Bulk Excel File Import
   const handleBulkUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,45 +223,30 @@ export const StudentManager: React.FC = () => {
       toast.error('Please select an Excel file, program, and target class.');
       return;
     }
+    if (bulkColumnErrors.length > 0 || bulkPreviewRows.length === 0) {
+      toast.error('Please resolve file errors before importing.');
+      return;
+    }
 
     setImporting(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const bstr = evt.target?.result;
-          const wb = XLSX.read(bstr, { type: 'binary' });
-          const wsname = wb.SheetNames[0];
-          const ws = wb.Sheets[wsname];
-          const data: any[] = XLSX.utils.sheet_to_json(ws);
+      const res = await api.post('/students/bulk-import', {
+        classSectionId: bulkClassId,
+        programId: bulkProgramId,
+        studentsList: bulkPreviewRows,
+      });
 
-          if (!data || data.length === 0) {
-            toast.error('The uploaded Excel sheet contains no rows.');
-            setImporting(false);
-            return;
-          }
-
-          const res = await api.post('/students/bulk-import', {
-            classSectionId: bulkClassId,
-            programId: bulkProgramId,
-            studentsList: data,
-          });
-
-          if (res.data.success) {
-            toast.success(res.data.message);
-            setShowBulkModal(false);
-            setBulkFile(null);
-            loadStudents();
-          }
-        } catch (err: any) {
-          toast.error(err.response?.data?.message || 'Failed to parse Excel file.');
-        } finally {
-          setImporting(false);
-        }
-      };
-      reader.readAsBinaryString(bulkFile);
+      if (res.data.success) {
+        toast.success(res.data.message);
+        setShowBulkModal(false);
+        setBulkFile(null);
+        setBulkPreviewRows([]);
+        setBulkColumnErrors([]);
+        loadStudents();
+      }
     } catch (err: any) {
-      toast.error('Error reading file.');
+      toast.error(err.response?.data?.message || 'Failed to import students.');
+    } finally {
       setImporting(false);
     }
   };
@@ -256,7 +291,7 @@ export const StudentManager: React.FC = () => {
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Filter by Class</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Filter by Class</label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
@@ -272,7 +307,7 @@ export const StudentManager: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Search Student</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Search Student</label>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -326,7 +361,7 @@ export const StudentManager: React.FC = () => {
                     <td className="py-3 px-4">
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-900 text-sm leading-tight">{st.fullName}</span>
-                        <span className="text-[11px] font-bold text-indigo-700 tracking-wide mt-0.5">
+                        <span className="text-xs font-bold text-indigo-700 tracking-wide mt-0.5">
                           {st.gender === 'Female' ? 'd/o' : 's/o'} {st.fatherName || 'N/A'}{' '}
                           {st.caste && <span className="text-slate-500 font-medium">({st.caste})</span>}
                         </span>
@@ -414,7 +449,7 @@ export const StudentManager: React.FC = () => {
             <form onSubmit={handleSaveStudent} className="space-y-4 mt-6">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Roll Number *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Roll Number *</label>
                   <input
                     type="text"
                     value={formData.rollNo}
@@ -425,7 +460,7 @@ export const StudentManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Registration No (Optional)
                   </label>
                   <input
@@ -440,7 +475,7 @@ export const StudentManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Student Full Name *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Student Full Name *</label>
                   <input
                     type="text"
                     value={formData.fullName}
@@ -451,7 +486,7 @@ export const StudentManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Father's Name *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Father's Name *</label>
                   <input
                     type="text"
                     value={formData.fatherName}
@@ -465,7 +500,7 @@ export const StudentManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Program *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Program *</label>
                   <select
                     value={formData.programId}
                     onChange={(e) => setFormData({ ...formData, programId: e.target.value })}
@@ -481,7 +516,7 @@ export const StudentManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Class Section *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Class Section *</label>
                   <select
                     value={formData.classSectionId}
                     onChange={(e) => setFormData({ ...formData, classSectionId: e.target.value })}
@@ -499,7 +534,7 @@ export const StudentManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Parent Contact Mobile *
                   </label>
                   <input
@@ -510,11 +545,11 @@ export const StudentManager: React.FC = () => {
                     placeholder="03001234567"
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                   />
-                  <span className="text-[10px] text-slate-400">Used for WhatsApp & SIM absent alerts</span>
+                  <span className="text-xs text-slate-400">Used for WhatsApp & SIM absent alerts</span>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Student Phone (Optional)
                   </label>
                   <input
@@ -550,81 +585,151 @@ export const StudentManager: React.FC = () => {
       {/* Bulk Excel Upload Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100">
             <h3 className="text-lg font-black text-slate-900 tracking-tight">Bulk Excel Student Import</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-600 mt-1">
               Upload an Excel (.xlsx or .csv) sheet. Columns should include: <strong>RollNo</strong>,{' '}
               <strong>Name</strong>, <strong>FatherName</strong>, and <strong>ParentPhone</strong>.
             </p>
 
             <form onSubmit={handleBulkUpload} className="space-y-4 mt-6">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Target Program</label>
-                <select
-                  value={bulkProgramId}
-                  onChange={(e) => setBulkProgramId(e.target.value)}
-                  required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                >
-                  {programs.map((p) => (
-                    <option key={p._id} value={p._id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="bulk-program" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Target Program
+                  </label>
+                  <select
+                    id="bulk-program"
+                    value={bulkProgramId}
+                    onChange={(e) => setBulkProgramId(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  >
+                    {programs.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="bulk-class" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Target Class / Section
+                  </label>
+                  <select
+                    id="bulk-class"
+                    value={bulkClassId}
+                    onChange={(e) => setBulkClassId(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  >
+                    {classes.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                  Target Class / Section
-                </label>
-                <select
-                  value={bulkClassId}
-                  onChange={(e) => setBulkClassId(e.target.value)}
-                  required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                >
-                  {classes.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label htmlFor="bulk-file" className="block text-xs font-bold text-slate-700 uppercase mb-1">
                   Select Excel File (.xlsx, .csv)
                 </label>
                 <input
+                  id="bulk-file"
                   type="file"
                   accept=".xlsx, .xls, .csv"
-                  onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+                  onChange={(e) => handleBulkFileSelect(e.target.files?.[0] || null)}
                   required
                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-900 file:text-white"
                 />
               </div>
 
+              {bulkColumnErrors.length > 0 && (
+                <div role="alert" className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
+                  <p className="font-bold">File validation errors:</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {bulkColumnErrors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {bulkPreviewRows.length > 0 && (
+                <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                  <div className="bg-slate-50 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span>Preview (showing first {Math.min(20, bulkPreviewRows.length)} of {bulkPreviewRows.length} rows)</span>
+                  </div>
+                  <div className="max-h-56 overflow-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold sticky top-0">
+                        <tr>
+                          {Object.keys(bulkPreviewRows[0]).slice(0, 6).map((col) => (
+                            <th key={col} className="py-2 px-3 whitespace-nowrap">
+                              {col}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {bulkPreviewRows.slice(0, 20).map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            {Object.keys(bulkPreviewRows[0]).slice(0, 6).map((col) => (
+                              <td key={col} className="py-1.5 px-3 text-slate-700 whitespace-nowrap">
+                                {String(row[col] ?? '')}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-6 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setShowBulkModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  onClick={() => {
+                    setShowBulkModal(false);
+                    setBulkFile(null);
+                    setBulkPreviewRows([]);
+                    setBulkColumnErrors([]);
+                  }}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={importing}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-md flex items-center gap-2"
+                  disabled={importing || bulkPreviewRows.length === 0 || bulkColumnErrors.length > 0}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white shadow-md flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  {importing ? 'Processing Sheet...' : 'Import Students Now'}
+                  {importing
+                    ? 'Processing Sheet…'
+                    : bulkPreviewRows.length > 0
+                    ? `Import ${bulkPreviewRows.length} students`
+                    : 'Import students'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Remove student ${deleteTarget?.name || ''}?`}
+        message={`Remove ${deleteTarget?.name || ''} from the student records? This cannot be undone.`}
+        confirmLabel="Remove Student"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

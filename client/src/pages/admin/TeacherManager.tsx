@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { UserPlus, Trash2, Edit2, CheckSquare, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -117,8 +118,16 @@ export const TeacherManager: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (!window.confirm(`Delete teacher account for "${name}"?`)) return;
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const handleDeleteUser = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteTarget) return;
+    const { id } = deleteTarget;
+    setDeleteTarget(null);
     try {
       const res = await api.delete(`/auth/users/${id}`);
       if (res.data.success) {
@@ -181,7 +190,7 @@ export const TeacherManager: React.FC = () => {
                     <td className="py-3.5 px-4 font-mono font-semibold text-indigo-900">{u.username}</td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        className={`px-2 py-0.5 rounded text-xs font-black uppercase ${
                           u.role === 'admin' || u.role === 'principal'
                             ? 'bg-purple-100 text-purple-800'
                             : 'bg-indigo-100 text-indigo-800'
@@ -197,14 +206,14 @@ export const TeacherManager: React.FC = () => {
                           {u.assignedClasses.map((cls: any) => (
                             <span
                               key={cls._id || cls}
-                              className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded"
+                              className="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded"
                             >
                               {cls.name || 'Class'}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-slate-400 text-[11px] italic">No classes assigned</span>
+                        <span className="text-slate-400 text-xs italic">No classes assigned</span>
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-right">
@@ -249,7 +258,7 @@ export const TeacherManager: React.FC = () => {
             <form onSubmit={handleSaveUser} className="space-y-4 mt-6">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Username *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Username *</label>
                   <input
                     type="text"
                     value={formData.username}
@@ -262,7 +271,7 @@ export const TeacherManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Full Name *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Full Name *</label>
                   <input
                     type="text"
                     value={formData.fullName}
@@ -276,7 +285,7 @@ export const TeacherManager: React.FC = () => {
 
               {!editingUser ? (
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Password *</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Password *</label>
                   <input
                     type="password"
                     value={formData.password}
@@ -285,11 +294,11 @@ export const TeacherManager: React.FC = () => {
                     placeholder="Min 8 chars, 1 uppercase, 1 number, 1 symbol (e.g. Teacher@2026!)"
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                   />
-                  <span className="text-[10px] text-slate-400">Strong password required by security policy</span>
+                  <span className="text-xs text-slate-400">Strong password required by security policy</span>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Reset Password (Optional)
                   </label>
                   <input
@@ -304,7 +313,7 @@ export const TeacherManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Department</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Department</label>
                   <input
                     type="text"
                     value={formData.department}
@@ -315,7 +324,7 @@ export const TeacherManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Role</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Role</label>
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
@@ -330,7 +339,7 @@ export const TeacherManager: React.FC = () => {
 
               {/* Assigned Classes Checkbox Grid */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-2">
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-2">
                   Assign Classes for Attendance Roll Call
                 </label>
                 <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-2xl p-3 bg-slate-50 space-y-2">
@@ -348,7 +357,7 @@ export const TeacherManager: React.FC = () => {
                           <Square className="w-4 h-4 text-slate-300" />
                         )}
                         <span className="text-xs font-semibold text-slate-800">{c.name}</span>
-                        <span className="text-[10px] text-slate-400">({c.programId?.code || 'Class'})</span>
+                        <span className="text-xs text-slate-400">({c.programId?.code || 'Class'})</span>
                       </div>
                     );
                   })}
@@ -371,6 +380,17 @@ export const TeacherManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Delete teacher ${deleteTarget?.name || ''}?`}
+        message={`Delete teacher account for "${deleteTarget?.name || ''}"? This cannot be undone.`}
+        confirmLabel="Delete Account"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={confirmDeleteUser}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };
