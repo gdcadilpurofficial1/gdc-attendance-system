@@ -56,7 +56,7 @@ export const ReportsExport: React.FC = () => {
         responseType: 'blob',
       });
 
-      const contentType = response.headers['content-type'] || '';
+      const contentType = String(response.headers['content-type'] || '');
       if (contentType.includes('application/json') || contentType.includes('text/html')) {
         const text = await (response.data as Blob).text();
         try {
