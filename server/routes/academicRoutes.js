@@ -6,7 +6,6 @@ import AttendanceSession from '../models/AttendanceSession.js';
 import User from '../models/User.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { migrateTo4Cohorts } from '../services/cohortMigration.js';
-import { seed4CohortsAndStudents } from '../services/seedCollegeService.js';
 
 const router = express.Router();
 
