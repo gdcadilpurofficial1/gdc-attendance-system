@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
-import { FileSpreadsheet, Download, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { FileSpreadsheet, Download, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const getPktDateString = (daysOffset = 0): string => {
+  const pktToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+  const [y, m, d] = pktToday.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + daysOffset);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
 
 export const ReportsExport: React.FC = () => {
   const [programs, setPrograms] = useState<any[]>([]);
@@ -8,13 +17,12 @@ export const ReportsExport: React.FC = () => {
 
   const [programId, setProgramId] = useState<string>('');
   const [classSectionId, setClassSectionId] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState<string>(() => getPktDateString(-30));
+  const [endDate, setEndDate] = useState<string>(() => getPktDateString(0));
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [downloading, setDownloading] = useState<boolean>(false);
+
+  const isRangeInvalid = Boolean(startDate && endDate && startDate > endDate);
 
   useEffect(() => {
     loadFilters();
@@ -30,11 +38,66 @@ export const ReportsExport: React.FC = () => {
     }
   };
 
-  const exportUrl = `/api/reports/export-excel?startDate=${startDate}&endDate=${endDate}${
-    programId ? `&programId=${programId}` : ''
-  }${classSectionId ? `&classSectionId=${classSectionId}` : ''}${
-    statusFilter !== 'ALL' ? `&status=${statusFilter}` : ''
-  }`;
+  const handleDownload = async () => {
+    if (isRangeInvalid) {
+      toast.error('From Date must be on or before To Date.');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const params: Record<string, string> = { startDate, endDate };
+      if (programId) params.programId = programId;
+      if (classSectionId) params.classSectionId = classSectionId;
+      if (statusFilter !== 'ALL') params.status = statusFilter;
+
+      const response = await api.get('/reports/export-excel', {
+        params,
+        responseType: 'blob',
+      });
+
+      const contentType = response.headers['content-type'] || '';
+      if (contentType.includes('application/json') || contentType.includes('text/html')) {
+        const text = await (response.data as Blob).text();
+        try {
+          const parsed = JSON.parse(text);
+          toast.error(parsed.message || 'No records in this range.');
+        } catch {
+          toast.error('No records in this range.');
+        }
+        return;
+      }
+
+      if ((response.data as Blob).size === 0) {
+        toast.error('No records in this range.');
+        return;
+      }
+
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', `gdc-attendance-${startDate}-to-${endDate}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success('Excel attendance sheet downloaded.');
+    } catch (err: any) {
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          toast.error(parsed.message || 'No records in this range.');
+          return;
+        } catch {
+          // fall through
+        }
+      }
+      toast.error(err.response?.data?.message || 'Failed to download Excel report.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -57,33 +120,52 @@ export const ReportsExport: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">From Date</label>
+                <label htmlFor="report-start-date" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  From Date
+                </label>
                 <input
+                  id="report-start-date"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">To Date</label>
+                <label htmlFor="report-end-date" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  To Date
+                </label>
                 <input
+                  id="report-end-date"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 />
               </div>
             </div>
 
+            {isRangeInvalid && (
+              <div
+                role="alert"
+                className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>&ldquo;From Date&rdquo; must be on or before &ldquo;To Date&rdquo;.</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Program</label>
+                <label htmlFor="report-program" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Program
+                </label>
                 <select
+                  id="report-program"
                   value={programId}
                   onChange={(e) => setProgramId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 >
                   <option value="">All Programs</option>
                   {programs.map((p) => (
@@ -95,11 +177,14 @@ export const ReportsExport: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Class</label>
+                <label htmlFor="report-class" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Class
+                </label>
                 <select
+                  id="report-class"
                   value={classSectionId}
                   onChange={(e) => setClassSectionId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 >
                   <option value="">All Classes</option>
                   {classes.map((c) => (
@@ -111,11 +196,14 @@ export const ReportsExport: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Attendance Status</label>
+                <label htmlFor="report-status" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Attendance Status
+                </label>
                 <select
+                  id="report-status"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 >
                   <option value="ALL">All Records</option>
                   <option value="PRESENT">Present Only</option>
@@ -124,17 +212,18 @@ export const ReportsExport: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-400">Formatted in standard .xlsx spreadsheet format</span>
+            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-slate-500">Formatted in standard .xlsx spreadsheet format</span>
 
-              <a
-                href={exportUrl}
-                download
-                className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition flex items-center gap-2"
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={downloading || isRangeInvalid}
+                className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
               >
                 <Download className="w-4 h-4" />
-                <span>Download Excel Sheet</span>
-              </a>
+                <span>{downloading ? 'Downloading…' : 'Download Excel Sheet'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -164,7 +253,7 @@ export const ReportsExport: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>Autonomous Engine Active</span>
               </div>
-              <span className="text-[10px] text-emerald-600 font-semibold">Zero Action Needed</span>
+              <span className="text-xs text-emerald-600 font-semibold">Zero Action Needed</span>
             </div>
           </div>
         </div>

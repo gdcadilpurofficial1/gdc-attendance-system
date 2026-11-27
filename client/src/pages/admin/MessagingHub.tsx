@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import {
   Send,
   QrCode,
@@ -220,15 +221,21 @@ export const MessagingHub: React.FC = () => {
     setTemplate((prev) => (prev ? `${prev} ${varName}` : varName));
   };
 
-  const handleUnlinkWhatsApp = async () => {
-    if (!window.confirm('Are you sure you want to unlink the current WhatsApp number?')) return;
+  const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
+
+  const handleUnlinkWhatsApp = () => {
+    setShowUnlinkConfirm(true);
+  };
+
+  const confirmUnlinkWhatsApp = async () => {
+    setShowUnlinkConfirm(false);
     try {
       const res = await api.post('/messaging/whatsapp/unlink');
       if (res.data.success) {
         toast.success(res.data.message);
         loadStatus();
       }
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to unlink device.');
     }
   };
@@ -376,12 +383,12 @@ export const MessagingHub: React.FC = () => {
                 <h3 className="font-black text-slate-900 text-lg">WhatsApp Web Bot</h3>
               </div>
               {config?.whatsappLinked ? (
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Connected ({config.whatsappPhone || 'Active'})
                 </span>
               ) : (
-                <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
                   Not Linked
                 </span>
               )}
@@ -394,7 +401,7 @@ export const MessagingHub: React.FC = () => {
 
             {/* Easy Number Switch Guideline */}
             <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-1.5">
-              <span className="font-bold text-slate-800 block text-[11px] uppercase">
+              <span className="font-bold text-slate-800 block text-xs uppercase">
                 💡 How to change WhatsApp SIM / Phone:
               </span>
               <p>1. Tap "Unlink Device" below to clear old session.</p>
@@ -434,7 +441,7 @@ export const MessagingHub: React.FC = () => {
                 <h3 className="font-black text-slate-900 text-lg">Office Android SIM Gateway</h3>
               </div>
               <span
-                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border ${
+                className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
                   config?.smsCapcomConfigured
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                     : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -454,7 +461,7 @@ export const MessagingHub: React.FC = () => {
                 <Smartphone className="w-4 h-4 text-indigo-600" />
                 <span>How to Link Capcom6 (app-release.apk):</span>
               </div>
-              <ol className="list-decimal list-inside space-y-1 text-slate-700 text-[11px] leading-relaxed">
+              <ol className="list-decimal list-inside space-y-1 text-slate-700 text-xs leading-relaxed">
                 <li>
                   Open{' '}
                   <a
@@ -482,7 +489,7 @@ export const MessagingHub: React.FC = () => {
             {/* Credentials Form */}
             <div className="mt-4 space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
                   Capcom6 Device Login (Username)
                 </label>
                 <input
@@ -495,7 +502,7 @@ export const MessagingHub: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
                   Capcom6 Device Password / Token
                 </label>
                 <div className="relative">
@@ -516,7 +523,7 @@ export const MessagingHub: React.FC = () => {
                   </button>
                 </div>
                 {config?.smsCapcomConfigured && (
-                  <span className="text-[10px] text-emerald-700 font-bold block mt-1">
+                  <span className="text-xs text-emerald-700 font-bold block mt-1">
                     ✓ Password is currently stored in database (type above to replace/update)
                   </span>
                 )}
@@ -526,7 +533,7 @@ export const MessagingHub: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAdvancedSms(!showAdvancedSms)}
-                  className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <span>{showAdvancedSms ? '▾ Hide' : '▸ Show'} Server Endpoint</span>
                 </button>
@@ -535,7 +542,7 @@ export const MessagingHub: React.FC = () => {
                     type="text"
                     value={smsEndpoint}
                     onChange={(e) => setSmsEndpoint(e.target.value)}
-                    className="mt-1.5 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono text-slate-700"
+                    className="mt-1.5 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-700"
                   />
                 )}
               </div>
@@ -606,7 +613,7 @@ export const MessagingHub: React.FC = () => {
               onChange={(e) => setIntervalSecs(Number(e.target.value))}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
             />
-            <span className="text-[10px] text-slate-400">Recommended: 15–20s (Prevents carrier spam block)</span>
+            <span className="text-xs text-slate-400">Recommended: 15–20s (Prevents carrier spam block)</span>
           </div>
 
           <div>
@@ -637,7 +644,7 @@ export const MessagingHub: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetDefaultTemplate}
-                className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition"
+                className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition"
               >
                 Reset Standard Template
               </button>
@@ -645,7 +652,7 @@ export const MessagingHub: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-1.5 mb-2.5">
-            <span className="text-[10px] font-bold text-slate-400 uppercase py-1">Insert Tags:</span>
+            <span className="text-xs font-bold text-slate-400 uppercase py-1">Insert Tags:</span>
             {[
               { tag: '{STUDENT_NAME}', alias: '{name}', desc: 'Student Name' },
               { tag: '{FATHER_NAME}', alias: '{fathername}', desc: "Father's name" },
@@ -659,7 +666,7 @@ export const MessagingHub: React.FC = () => {
                 type="button"
                 onClick={() => insertVariable(item.tag)}
                 title={`Inserts ${item.tag} (also accepts ${item.alias}) - ${item.desc}`}
-                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-[11px] font-mono font-medium transition cursor-pointer"
+                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md text-xs font-mono font-medium transition cursor-pointer"
               >
                 {item.tag}
               </button>
@@ -674,7 +681,7 @@ export const MessagingHub: React.FC = () => {
             className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans leading-relaxed"
           />
 
-          <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
             💡 <strong>Smart Tags & Dynamic Aliases:</strong> You can freely use <code>{'{STUDENT_NAME}'}</code>, <code>{'{FATHER_NAME}'}</code>, <code>{'{RELATION}'}</code>, <code>{'{DATE}'}</code> or lowercase shortcuts like <code>{'{name}'}</code>, <code>{'{fathername}'}</code>, <code>{'{relationship}'}</code>, <code>{'{date}'}</code>. The relationship tag automatically adapts to <strong>'توهان جو پٽ'</strong> for male students and <strong>'توهان جي نياڻي'</strong> for female students.
           </p>
         </div>
@@ -723,12 +730,12 @@ export const MessagingHub: React.FC = () => {
                     <td className="py-3 px-4 text-slate-600">{log.classSectionName}</td>
                     <td className="py-3 px-4 text-indigo-700 font-semibold">{log.recipientPhone}</td>
                     <td className="py-3 px-4">
-                      <span className="text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded">{log.channel}</span>
+                      <span className="text-xs font-bold bg-slate-100 px-2 py-0.5 rounded">{log.channel}</span>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-col items-start gap-0.5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                          className={`px-2 py-0.5 rounded text-xs font-black ${
                             log.status === 'SENT'
                               ? 'bg-emerald-100 text-emerald-800'
                               : log.status === 'SENDING'
@@ -743,7 +750,7 @@ export const MessagingHub: React.FC = () => {
                         {log.status === 'FAILED' && log.errorMessage && (
                           <span
                             title={log.errorMessage}
-                            className="text-[10px] text-rose-600 font-semibold max-w-[150px] truncate"
+                            className="text-xs text-rose-600 font-semibold max-w-[150px] truncate"
                           >
                             {log.errorMessage.includes('not registered')
                               ? '⚠️ Not on WhatsApp'
@@ -797,7 +804,7 @@ export const MessagingHub: React.FC = () => {
             {loadingQr ? (
               <div className="w-56 h-56 mx-auto flex flex-col items-center justify-center bg-slate-50 rounded-2xl border border-slate-200">
                 <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mb-2" />
-                <span className="text-[11px] text-slate-400 font-medium">Generating WhatsApp Handshake...</span>
+                <span className="text-xs text-slate-400 font-medium">Generating WhatsApp Handshake...</span>
               </div>
             ) : qrImage ? (
               <div className="space-y-3">
@@ -807,7 +814,7 @@ export const MessagingHub: React.FC = () => {
                 <div className="flex items-center justify-center gap-2">
                   <button
                     onClick={handleGenerateQr}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     <span>Refresh QR Code</span>
@@ -835,6 +842,17 @@ export const MessagingHub: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={showUnlinkConfirm}
+        title="Unlink WhatsApp device?"
+        message="Are you sure you want to unlink the current WhatsApp number? Automated WhatsApp notices will pause until a device is linked again."
+        confirmLabel="Unlink Device"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={confirmUnlinkWhatsApp}
+        onCancel={() => setShowUnlinkConfirm(false)}
+      />
     </div>
   );
 };

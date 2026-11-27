@@ -20,6 +20,17 @@ const getTodayPkt = () => {
   }
 };
 
+const formatReadableDate = (ymd: string): string => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return ymd;
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
 export const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -107,14 +118,14 @@ export const TeacherDashboard: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
               Welcome, {user?.fullName || 'Professor'}
             </h1>
-            <p className="text-sm text-slate-300 mt-1">
-              Department of {user?.department || 'General'} • Date: {todayDate}
+            <p className="text-sm text-slate-200 mt-1">
+              Department of {user?.department || 'General'} • {formatReadableDate(todayDate)}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 text-xs font-semibold">
-            <Calendar className="w-4 h-4 text-indigo-300" />
-            <span>Today's Sessions</span>
+          <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl border border-white/15 text-xs font-medium text-indigo-100 select-none">
+            <Calendar className="w-4 h-4 text-indigo-200" />
+            <span>Today&apos;s Sessions</span>
           </div>
         </div>
       </div>
@@ -150,26 +161,34 @@ export const TeacherDashboard: React.FC = () => {
             return (
               <div
                 key={cls._id}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleSelectClass(cls._id)}
-                className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-indigo-400 hover:shadow-lg transition duration-200 flex flex-col justify-between cursor-pointer group"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelectClass(cls._id);
+                  }
+                }}
+                className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-indigo-400 hover:shadow-lg transition duration-200 flex flex-col justify-between cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                    <span className="text-xs font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
                       {cls.programId?.code || 'Degree'}
                     </span>
                     {isConfirmed ? (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Confirmed
                       </span>
                     ) : isMarked ? (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                      <span className="flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
                         <Clock className="w-3.5 h-3.5" />
                         Draft Saved
                       </span>
                     ) : (
-                      <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                      <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
                         Not Marked
                       </span>
                     )}
@@ -178,22 +197,22 @@ export const TeacherDashboard: React.FC = () => {
                   <h3 className="text-base font-black text-slate-900 group-hover:text-indigo-900 transition">
                     {cls.name}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-600 mt-1">
                     {cls.yearLevel} • Section {cls.section} • {cls.shift || 'Morning'}
                   </p>
 
                   {session && (
                     <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 text-center text-xs">
                       <div>
-                        <span className="block text-slate-400 text-[10px]">Total</span>
+                        <span className="block text-slate-500 text-xs">Total</span>
                         <span className="font-bold text-slate-800">{session.totalStudents}</span>
                       </div>
                       <div>
-                        <span className="block text-emerald-600 text-[10px]">Present</span>
+                        <span className="block text-emerald-700 text-xs">Present</span>
                         <span className="font-bold text-emerald-700">{session.presentCount}</span>
                       </div>
                       <div>
-                        <span className="block text-rose-600 text-[10px]">Absent</span>
+                        <span className="block text-rose-700 text-xs">Absent</span>
                         <span className="font-bold text-rose-700">{session.absentCount}</span>
                       </div>
                     </div>
@@ -207,7 +226,7 @@ export const TeacherDashboard: React.FC = () => {
                       e.stopPropagation();
                       navigate(`/teacher/stats?classId=${cls._id}`);
                     }}
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-indigo-900 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition"
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-indigo-900 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                   >
                     <Users className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Student Stats</span>

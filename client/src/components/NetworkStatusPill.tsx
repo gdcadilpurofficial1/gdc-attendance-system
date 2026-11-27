@@ -58,7 +58,10 @@ export const NetworkStatusPill: React.FC = () => {
 
   if (!isOnline || pendingCount > 0) {
     return (
-      <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
+      <div
+        aria-live="polite"
+        className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm"
+      >
         {isOnline ? (
           <Wifi className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
         ) : (
@@ -69,9 +72,10 @@ export const NetworkStatusPill: React.FC = () => {
         </span>
         {isOnline && pendingCount > 0 && (
           <button
+            type="button"
             onClick={handleSync}
             disabled={isSyncing}
-            className="ml-1 bg-amber-600 hover:bg-amber-700 text-white px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition"
+            className="ml-1 bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Syncing...' : 'Sync Now'}
@@ -82,7 +86,10 @@ export const NetworkStatusPill: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-medium">
+    <div
+      aria-live="polite"
+      className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-medium"
+    >
       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
       <span>Online & Synced</span>
     </div>

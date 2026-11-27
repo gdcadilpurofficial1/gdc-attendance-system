@@ -67,6 +67,7 @@ export const ClassStudentStats: React.FC = () => {
   // High-performance Pagination State (Defaults to 50 students per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(50);
+  const [showMoreColumns, setShowMoreColumns] = useState<boolean>(false);
 
   // Load classes assigned to teacher
   useEffect(() => {
@@ -213,13 +214,14 @@ export const ClassStudentStats: React.FC = () => {
             <GraduationCap className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <label htmlFor="stats-cohort-select" className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
               Selected Cohort
             </label>
             <select
+              id="stats-cohort-select"
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="mt-0.5 bg-transparent font-black text-slate-900 text-base focus:outline-none cursor-pointer"
+              className="mt-0.5 bg-transparent font-black text-slate-900 text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded cursor-pointer"
             >
               <option value="all">All Assigned Classes ({classes.length} Sections)</option>
               {classes.map((cls) => (
@@ -246,26 +248,26 @@ export const ClassStudentStats: React.FC = () => {
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-bold uppercase">Enrolled Students</span>
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-xs font-bold uppercase">Enrolled Students</span>
               <Users className="w-4 h-4 text-indigo-600" />
             </div>
             <div className="text-2xl font-black text-slate-900">{summary.totalStudents}</div>
-            <span className="text-[10px] text-slate-500 font-medium">Active roster</span>
+            <span className="text-xs text-slate-500 font-medium">Active roster</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-bold uppercase">Sessions Held</span>
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-xs font-bold uppercase">Sessions Held</span>
               <Percent className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-2xl font-black text-slate-900">{summary.totalSessions}</div>
-            <span className="text-[10px] text-slate-500 font-medium">Confirmed sessions</span>
+            <span className="text-xs text-slate-500 font-medium">Confirmed sessions</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-bold uppercase">Class Average</span>
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-xs font-bold uppercase">Class Average</span>
               <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-2xl font-black text-emerald-700">{summary.avgAttendance}%</div>
@@ -278,21 +280,21 @@ export const ClassStudentStats: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-bold uppercase">Exam Shortage</span>
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-xs font-bold uppercase">Exam Shortage</span>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
             <div className="text-2xl font-black text-amber-600">{summary.shortageCount}</div>
-            <span className="text-[10px] text-slate-500 font-medium">Below 75% Board rule</span>
+            <span className="text-xs text-slate-500 font-medium">Below 75% Board rule</span>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs col-span-2 lg:col-span-1">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[11px] font-bold uppercase">Chronic Truants</span>
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-xs font-bold uppercase">Chronic Truants</span>
               <ShieldAlert className="w-4 h-4 text-rose-600" />
             </div>
             <div className="text-2xl font-black text-rose-600">{summary.chronicTruantsCount}</div>
-            <span className="text-[10px] text-slate-500 font-medium">≥ 3 consecutive absent</span>
+            <span className="text-xs text-slate-500 font-medium">≥ 3 consecutive absent</span>
           </div>
         </div>
       )}
@@ -374,13 +376,27 @@ export const ClassStudentStats: React.FC = () => {
           {totalFiltered !== students.length && ` (filtered from ${students.length})`}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-[11px]">
-            <span>Show:</span>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowMoreColumns((v) => !v)}
+            aria-pressed={showMoreColumns}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              showMoreColumns
+                ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {showMoreColumns ? 'Hide extra columns' : 'Show more columns'}
+          </button>
+
+          <div className="flex items-center gap-1.5 text-xs">
+            <label htmlFor="stats-page-size">Show:</label>
             <select
+              id="stats-page-size"
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 focus:outline-none"
+              className="bg-white border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
               <option value={25}>25 / page</option>
               <option value={50}>50 / page</option>
@@ -392,9 +408,11 @@ export const ClassStudentStats: React.FC = () => {
           {totalPages > 1 && (
             <div className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                aria-label="Previous Page"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 title="Previous Page"
               >
                 <ChevronLeft className="w-4 h-4 text-slate-600" />
@@ -403,9 +421,11 @@ export const ClassStudentStats: React.FC = () => {
                 {currentPage} / {totalPages}
               </span>
               <button
+                type="button"
                 onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                aria-label="Next Page"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 title="Next Page"
               >
                 <ChevronRight className="w-4 h-4 text-slate-600" />
@@ -432,10 +452,11 @@ export const ClassStudentStats: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-xs">
                 <tr>
                   <th className="py-3 px-4">Roll</th>
                   <th className="py-3 px-4">Student Details</th>
+                  {showMoreColumns && <th className="py-3 px-4">Caste</th>}
                   <th className="py-3 px-4 text-center">Present / Total</th>
                   <th className="py-3 px-4 text-center">Turnout Rate</th>
                   <th className="py-3 px-4 text-center">Eligibility Status</th>
@@ -459,25 +480,30 @@ export const ClassStudentStats: React.FC = () => {
 
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col">
-                          <span className="font-black text-slate-900 text-xs sm:text-sm">{std.fullName}</span>
-                          <span className="text-[11px] font-bold text-indigo-700 tracking-wide mt-0.5">
-                            {std.gender === 'Female' ? 'd/o' : 's/o'} {std.fatherName || 'N/A'}{' '}
-                            {std.caste && `(${std.caste})`}
+                          <span className="font-black text-slate-900 text-sm">{std.fullName}</span>
+                          <span className="text-xs font-bold text-indigo-700 tracking-wide mt-0.5">
+                            {std.gender === 'Female' ? 'd/o' : 's/o'} {std.fatherName || 'N/A'}
                           </span>
                           {selectedClassId === 'all' && std.className && (
-                            <span className="inline-block mt-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded w-max">
+                            <span className="inline-block mt-1 text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded w-max">
                               {std.className}
                             </span>
                           )}
                         </div>
                       </td>
 
+                      {showMoreColumns && (
+                        <td className="py-3.5 px-4 text-xs font-semibold text-slate-700">
+                          {std.caste || '—'}
+                        </td>
+                      )}
+
                       <td className="py-3.5 px-4 text-center">
                         <span className="font-bold text-slate-800">
                           {std.totalDaysPresent}{' '}
-                          <span className="text-slate-400 font-normal">/ {summary?.totalSessions || 0}</span>
+                          <span className="text-slate-500 font-normal">/ {summary?.totalSessions || 0}</span>
                         </span>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-xs text-slate-500">
                           {std.totalDaysAbsent} Absent • {std.totalDaysLeave} Leave
                         </div>
                       </td>
@@ -505,24 +531,24 @@ export const ClassStudentStats: React.FC = () => {
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex flex-col items-center gap-1">
                           {isEligible ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
                               <CheckCircle2 className="w-3 h-3" />
                               Eligible (≥75%)
                             </span>
                           ) : isWarning ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
                               <AlertTriangle className="w-3 h-3" />
                               Shortage Risk
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
                               <ShieldAlert className="w-3 h-3" />
                               Ineligible (&lt;75%)
                             </span>
                           )}
 
                           {isChronic && (
-                            <span className="text-[10px] font-black text-rose-800 bg-rose-100 px-2 py-0.2 rounded">
+                            <span className="text-xs font-black text-rose-800 bg-rose-100 px-2 py-0.2 rounded">
                               🚨 {std.consecutiveAbsences} days absent
                             </span>
                           )}
@@ -549,7 +575,7 @@ export const ClassStudentStats: React.FC = () => {
                             <Phone className="w-4 h-4" />
                           </a>
                         </div>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">{std.parentPhone}</span>
+                        <span className="text-xs text-slate-400 block mt-0.5">{std.parentPhone}</span>
                       </td>
                     </tr>
                   );

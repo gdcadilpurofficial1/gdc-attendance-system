@@ -235,49 +235,49 @@ export const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
               <Users className="w-4 h-4 text-indigo-600" />
             </div>
             <span className="text-2xl font-black text-slate-900">{stats?.totalStudents || 0}</span>
-            <span className="block text-[11px] text-slate-400 mt-1">Enrolled across college</span>
+            <span className="block text-xs text-slate-400 mt-1">Enrolled across college</span>
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Today's Turnout</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Turnout</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
             <span className="text-2xl font-black text-emerald-700">{stats?.turnoutPercentage || 0}%</span>
-            <span className="block text-[11px] text-slate-400 mt-1">{stats?.presentToday || 0} Present Today</span>
+            <span className="block text-xs text-slate-400 mt-1">{stats?.presentToday || 0} Present Today</span>
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Classes Marked</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Classes Marked</span>
               <GraduationCap className="w-4 h-4 text-blue-600" />
             </div>
             <span className="text-2xl font-black text-slate-900">
               {stats?.classesMarkedToday || 0} / {stats?.totalClasses || 0}
             </span>
-            <span className="block text-[11px] text-slate-400 mt-1">Submitted sessions</span>
+            <span className="block text-xs text-slate-400 mt-1">Submitted sessions</span>
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Absentees Today</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Absentees Today</span>
               <XCircle className="w-4 h-4 text-rose-600" />
             </div>
             <span className="text-2xl font-black text-rose-700">{stats?.absentToday || 0}</span>
-            <span className="block text-[11px] text-slate-400 mt-1">Notices auto-queued</span>
+            <span className="block text-xs text-slate-400 mt-1">Notices auto-queued</span>
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-rose-200 shadow-xs col-span-2 lg:col-span-1 bg-rose-50/30">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Chronic Truancy</span>
+              <span className="text-xs font-bold text-rose-700 uppercase tracking-wider">Chronic Truancy</span>
               <AlertTriangle className="w-4 h-4 text-rose-600" />
             </div>
             <span className="text-2xl font-black text-rose-700">{truancyAlerts.length}</span>
-            <span className="block text-[11px] text-rose-600 font-semibold mt-1">🚨 3+ Days Consecutive</span>
+            <span className="block text-xs text-rose-600 font-semibold mt-1">🚨 3+ Days Consecutive</span>
           </div>
         </div>
       )}
@@ -291,7 +291,7 @@ export const AdminDashboard: React.FC = () => {
               <BarChart3 className="w-5 h-5 text-indigo-700" />
               <h2 className="text-base font-black text-slate-900 tracking-tight">Turnout Rate by Class</h2>
             </div>
-            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
               Date: {selectedDate}
             </span>
           </div>
@@ -316,7 +316,7 @@ export const AdminDashboard: React.FC = () => {
                         <span className="text-slate-400 font-normal">({sess.programId?.code || 'Prog'})</span>
                       </span>
                       <div className="flex items-center gap-2 font-mono">
-                        <span className="text-slate-500 text-[11px]">
+                        <span className="text-slate-500 text-xs">
                           {sess.presentCount}/{sess.totalStudents} Present
                         </span>
                         <span
@@ -385,18 +385,18 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2 pt-2 text-center text-xs">
                 <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
-                  <span className="block text-[10px] font-bold text-emerald-600 uppercase">Present</span>
+                  <span className="block text-xs font-bold text-emerald-600 uppercase">Present</span>
                   <span className="font-black text-emerald-800 text-base">{stats?.presentToday || 0}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-100">
-                  <span className="block text-[10px] font-bold text-rose-600 uppercase">Absent</span>
+                  <span className="block text-xs font-bold text-rose-600 uppercase">Absent</span>
                   <span className="font-black text-rose-800 text-base">{stats?.absentToday || 0}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 text-center">
+          <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400 text-center">
             Automatic keep-alive active (7:00 AM – 6:00 PM PKT)
           </div>
         </div>
@@ -424,14 +424,14 @@ export const AdminDashboard: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-900 text-xs">{alert.studentId?.fullName}</span>
-                    <span className="text-[10px] font-black text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-black text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
                       {alert.consecutiveDays} Days
                     </span>
                   </div>
-                  <span className="block text-[11px] text-slate-500 mt-0.5">
+                  <span className="block text-xs text-slate-500 mt-0.5">
                     Roll #{alert.studentId?.rollNo} • {alert.classSectionId?.name}
                   </span>
-                  <span className="block text-[11px] font-medium text-indigo-700">
+                  <span className="block text-xs font-medium text-indigo-700">
                     Parent: {alert.studentId?.parentPhone}
                   </span>
                 </div>
@@ -459,7 +459,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Program Filter */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Program</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Program</label>
             <select
               value={selectedProgram}
               onChange={(e) => setSelectedProgram(e.target.value)}
@@ -476,7 +476,7 @@ export const AdminDashboard: React.FC = () => {
 
           {/* Class Filter */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Class / Section</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Class / Section</label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
@@ -493,7 +493,7 @@ export const AdminDashboard: React.FC = () => {
 
           {/* Date Picker */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
             <input
               type="date"
               value={selectedDate}
@@ -504,7 +504,7 @@ export const AdminDashboard: React.FC = () => {
 
           {/* Status Filter */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Status Filter</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status Filter</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -518,7 +518,7 @@ export const AdminDashboard: React.FC = () => {
 
           {/* Search Term */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Search Student / Roll</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Search Student / Roll</label>
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -573,7 +573,7 @@ export const AdminDashboard: React.FC = () => {
                       <td className="py-3 px-4 text-indigo-700 font-semibold">{row.parentPhone}</td>
                       <td className="py-3 px-4">
                         <span
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-black ${
+                          className={`px-2.5 py-1 rounded-lg text-xs font-black ${
                             row.status === 'PRESENT'
                               ? 'bg-emerald-100 text-emerald-800'
                               : row.status === 'ABSENT'
@@ -589,11 +589,11 @@ export const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-right">
                         {isChronic ? (
-                          <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-full">
                             🚨 CRITICAL TRUANT
                           </span>
                         ) : (
-                          <span className="text-slate-400 text-[10px]">Normal</span>
+                          <span className="text-slate-400 text-xs">Normal</span>
                         )}
                       </td>
                     </tr>
@@ -616,7 +616,7 @@ export const AdminDashboard: React.FC = () => {
             </p>
 
             <div className="mt-4">
-              <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                 Administrative Notes
               </label>
               <textarea

@@ -250,32 +250,20 @@ router.delete('/classes/:id', protect, authorize('admin', 'principal'), async (r
   }
 });
 
-// @route   POST /api/academic/migrate-cohorts (Admin only - Initialize 4 Cohorts & 384 Students)
-router.post('/migrate-cohorts', protect, authorize('admin', 'principal'), async (req, res, next) => {
-  try {
-    const result = await seed4CohortsAndStudents();
-    res.json({
-      success: true,
-      message: 'Successfully initialized 4 cohorts and 384 students: XI Boys (133), XI Girls (52), XII Boys (192), XII Girls (7).',
-      result,
-    });
-  } catch (error) {
-    next(error);
-  }
+// @route   POST /api/academic/migrate-cohorts (Disabled)
+router.post('/migrate-cohorts', protect, authorize('admin', 'principal'), (req, res) => {
+  res.status(410).json({
+    success: false,
+    message: 'Seeding is disabled. Students are managed from Student Manager.',
+  });
 });
 
-// @route   POST /api/academic/seed-4-cohorts (Admin only)
-router.post('/seed-4-cohorts', protect, authorize('admin', 'principal'), async (req, res, next) => {
-  try {
-    const result = await seed4CohortsAndStudents();
-    res.json({
-      success: true,
-      message: 'Successfully initialized 4 cohorts and 384 students.',
-      result,
-    });
-  } catch (error) {
-    next(error);
-  }
+// @route   POST /api/academic/seed-4-cohorts (Disabled)
+router.post('/seed-4-cohorts', protect, authorize('admin', 'principal'), (req, res) => {
+  res.status(410).json({
+    success: false,
+    message: 'Seeding is disabled. Students are managed from Student Manager.',
+  });
 });
 
 export default router;

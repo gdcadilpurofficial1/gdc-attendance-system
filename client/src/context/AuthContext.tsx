@@ -32,6 +32,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const checkAuth = async () => {
+      const hasToken = localStorage.getItem('gdc_auth_token');
+      const hasUser = localStorage.getItem('gdc_auth_user');
+      if (!hasToken && !hasUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await api.get('/auth/me');
         if (response.data.success && response.data.user) {

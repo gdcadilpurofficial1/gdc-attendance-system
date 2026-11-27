@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
@@ -41,9 +41,34 @@ const AdminSettings = lazy(() =>
 const PageLoader: React.FC = () => (
   <div className="min-h-[60vh] flex flex-col items-center justify-center">
     <div className="w-9 h-9 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-    <span className="mt-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Loading GDC Portal...</span>
+    <span className="mt-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Loading GDC Portal...</span>
   </div>
 );
+
+const NotFound: React.FC = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  const targetPath = user ? (user.role === 'teacher' ? '/teacher' : '/admin') : '/login';
+  const buttonLabel = user ? 'Go to my dashboard' : 'Go to login';
+
+  return (
+    <div className="min-h-[70vh] flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
+        <p className="text-xs font-bold uppercase tracking-widest text-indigo-700 mb-2">404</p>
+        <h1 className="text-2xl font-black text-slate-900">Page not found</h1>
+        <p className="text-sm text-slate-600 mt-2">
+          The page you are looking for does not exist or has been moved.
+        </p>
+        <Link
+          to={targetPath}
+          className="inline-flex items-center justify-center mt-6 px-5 py-3 bg-indigo-900 hover:bg-indigo-800 text-white text-sm font-bold rounded-xl shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+        >
+          {buttonLabel}
+        </Link>
+      </div>
+    </div>
+  );
+};
 
 // Smart Home Redirector based on user role
 const HomeRedirect: React.FC = () => {
@@ -85,7 +110,7 @@ export const AppContent: React.FC = () => {
             </Route>
 
             {/* Fallback */}
-            <Route path="*" element={<HomeRedirect />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </main>

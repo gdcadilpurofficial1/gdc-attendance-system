@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/client';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import {
   Plus,
   Trash2,
@@ -156,44 +157,52 @@ export const AcademicManager: React.FC = () => {
     }
   };
 
-  const handleDeleteProgram = async (prog: ProgramItem) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete program "${prog.name}" (${prog.code})? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  }>({ open: false, title: '', message: '', confirmLabel: 'Delete', onConfirm: () => {} });
 
+  const executeDeleteProgram = async (prog: ProgramItem, force = false) => {
     try {
-      const res = await api.delete(`/academic/programs/${prog._id}`);
+      const url = force ? `/academic/programs/${prog._id}?force=true` : `/academic/programs/${prog._id}`;
+      const res = await api.delete(url);
       if (res.data.success) {
-        toast.success(`Program "${prog.code}" deleted.`);
+        toast.success(force ? `Program "${prog.code}" and linked classes deleted.` : `Program "${prog.code}" deleted.`);
         loadData();
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to delete program.';
-      if (msg.includes('active class section(s) are linked')) {
-        if (
-          window.confirm(
-            `${msg}\n\nDo you want to FORCE DELETE this program along with its empty class sections?`
-          )
-        ) {
-          try {
-            const forceRes = await api.delete(`/academic/programs/${prog._id}?force=true`);
-            if (forceRes.data.success) {
-              toast.success(`Program "${prog.code}" and linked classes deleted.`);
-              loadData();
-              return;
-            }
-          } catch (fErr: any) {
-            toast.error(fErr.response?.data?.message || 'Force delete failed.');
-            return;
-          }
-        }
+      if (!force && msg.includes('active class section(s) are linked')) {
+        setConfirmState({
+          open: true,
+          title: `Force delete ${prog.code}?`,
+          message: `${msg} Do you want to force delete this program along with its empty class sections?`,
+          confirmLabel: 'Force Delete',
+          onConfirm: () => {
+            setConfirmState((s) => ({ ...s, open: false }));
+            executeDeleteProgram(prog, true);
+          },
+        });
+        return;
       }
       toast.error(msg);
     }
+  };
+
+  const handleDeleteProgram = (prog: ProgramItem) => {
+    setConfirmState({
+      open: true,
+      title: `Delete program ${prog.code}?`,
+      message: `Delete program "${prog.name}" (${prog.code})? This cannot be undone.`,
+      confirmLabel: 'Delete Program',
+      onConfirm: () => {
+        setConfirmState((s) => ({ ...s, open: false }));
+        executeDeleteProgram(prog, false);
+      },
+    });
   };
 
   // ────────── CLASS SECTION ACTIONS ──────────
@@ -247,44 +256,50 @@ export const AcademicManager: React.FC = () => {
     }
   };
 
-  const handleDeleteClass = async (cls: ClassItem) => {
+  const executeDeleteClass = async (cls: ClassItem, force = false) => {
+    try {
+      const url = force ? `/academic/classes/${cls._id}?force=true` : `/academic/classes/${cls._id}`;
+      const res = await api.delete(url);
+      if (res.data.success) {
+        toast.success(`Class section "${cls.name}" deleted.`);
+        loadData();
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Delete failed.';
+      if (!force && msg.includes('attendance session records exist')) {
+        setConfirmState({
+          open: true,
+          title: `Force delete class ${cls.name}?`,
+          message: `${msg} Do you want to force delete this class along with its attendance records?`,
+          confirmLabel: 'Force Delete',
+          onConfirm: () => {
+            setConfirmState((s) => ({ ...s, open: false }));
+            executeDeleteClass(cls, true);
+          },
+        });
+        return;
+      }
+      toast.error(msg);
+    }
+  };
+
+  const handleDeleteClass = (cls: ClassItem) => {
     const enrolled = studentCounts[cls._id] || 0;
     if (enrolled > 0) {
       toast.error(`Cannot delete "${cls.name}": ${enrolled} active students enrolled. Remove students first.`);
       return;
     }
 
-    if (!window.confirm(`Delete class section "${cls.name}"?`)) return;
-
-    try {
-      const res = await api.delete(`/academic/classes/${cls._id}`);
-      if (res.data.success) {
-        toast.success('Class section deleted.');
-        loadData();
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Delete failed.';
-      if (msg.includes('attendance session records exist')) {
-        if (
-          window.confirm(
-            `${msg}\n\nDo you want to FORCE DELETE this class along with its attendance records?`
-          )
-        ) {
-          try {
-            const forceRes = await api.delete(`/academic/classes/${cls._id}?force=true`);
-            if (forceRes.data.success) {
-              toast.success(`Class section "${cls.name}" deleted.`);
-              loadData();
-              return;
-            }
-          } catch (fErr: any) {
-            toast.error(fErr.response?.data?.message || 'Force delete failed.');
-            return;
-          }
-        }
-      }
-      toast.error(msg);
-    }
+    setConfirmState({
+      open: true,
+      title: `Delete class ${cls.name}?`,
+      message: `Delete class ${cls.name}? This cannot be undone.`,
+      confirmLabel: 'Delete Class',
+      onConfirm: () => {
+        setConfirmState((s) => ({ ...s, open: false }));
+        executeDeleteClass(cls, false);
+      },
+    });
   };
 
   return (
@@ -332,7 +347,7 @@ export const AcademicManager: React.FC = () => {
                 <BookOpen className="w-4 h-4 text-indigo-600" />
                 <span>Degree Programs ({programs.length})</span>
               </h2>
-              <span className="text-[11px] font-bold text-slate-400">Dynamic</span>
+              <span className="text-xs font-bold text-slate-400">Dynamic</span>
             </div>
 
             {loading ? (
@@ -375,7 +390,7 @@ export const AcademicManager: React.FC = () => {
                     </div>
 
                     <h3 className="text-sm font-bold text-slate-900 mt-2">{prog.name}</h3>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 text-[11px] text-slate-500 font-semibold">
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 text-xs text-slate-500 font-semibold">
                       <span>{prog.level}</span>
                       <span>{prog.durationYears} Years</span>
                     </div>
@@ -410,7 +425,7 @@ export const AcademicManager: React.FC = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 text-[10px]">
+                  <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 text-xs">
                     <tr>
                       <th className="py-3 px-4">Class Section</th>
                       <th className="py-3 px-4">Program</th>
@@ -427,13 +442,13 @@ export const AcademicManager: React.FC = () => {
                         <tr key={cls._id} className="hover:bg-slate-50 transition">
                           <td className="py-3.5 px-4">
                             <div className="font-black text-slate-900">{cls.name}</div>
-                            <div className="text-[10px] text-slate-400">
+                            <div className="text-xs text-slate-400">
                               Section {cls.section} • {cls.shift} Shift
                             </div>
                           </td>
 
                           <td className="py-3.5 px-4">
-                            <span className="bg-indigo-50 text-indigo-900 font-bold px-2 py-0.5 rounded text-[11px]">
+                            <span className="bg-indigo-50 text-indigo-900 font-bold px-2 py-0.5 rounded text-xs">
                               {cls.programId?.code || '—'}
                             </span>
                           </td>
@@ -441,7 +456,7 @@ export const AcademicManager: React.FC = () => {
                           <td className="py-3.5 px-4 font-semibold text-slate-700">{cls.yearLevel}</td>
 
                           <td className="py-3.5 px-4 text-center">
-                            <span className="inline-flex items-center gap-1 font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-full text-[11px]">
+                            <span className="inline-flex items-center gap-1 font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-full text-xs">
                               <Users className="w-3 h-3 text-slate-500" />
                               {enrolled}
                             </span>
@@ -451,7 +466,7 @@ export const AcademicManager: React.FC = () => {
                             {cls.inchargeTeacherId?.fullName ? (
                               <div className="font-semibold text-slate-900">
                                 {cls.inchargeTeacherId.fullName}
-                                <span className="block text-[10px] text-slate-400">
+                                <span className="block text-xs text-slate-400">
                                   {cls.inchargeTeacherId.department || 'Faculty'}
                                 </span>
                               </div>
@@ -502,7 +517,7 @@ export const AcademicManager: React.FC = () => {
 
             <form onSubmit={handleSaveProgram} className="space-y-4 mt-5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                   Program Title *
                 </label>
                 <input
@@ -517,7 +532,7 @@ export const AcademicManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Program Code *
                   </label>
                   <input
@@ -530,7 +545,7 @@ export const AcademicManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Degree Level
                   </label>
                   <select
@@ -547,7 +562,7 @@ export const AcademicManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                   Program Duration (Years)
                 </label>
                 <input
@@ -593,7 +608,7 @@ export const AcademicManager: React.FC = () => {
 
             <form onSubmit={handleSaveClass} className="space-y-4 mt-5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                   Class Display Name *
                 </label>
                 <input
@@ -607,7 +622,7 @@ export const AcademicManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                   Parent Program *
                 </label>
                 <select
@@ -626,7 +641,7 @@ export const AcademicManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Year / Level *
                   </label>
                   <input
@@ -639,7 +654,7 @@ export const AcademicManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Section *
                   </label>
                   <input
@@ -655,7 +670,7 @@ export const AcademicManager: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Academic Year
                   </label>
                   <input
@@ -667,7 +682,7 @@ export const AcademicManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                     Shift
                   </label>
                   <select
@@ -682,7 +697,7 @@ export const AcademicManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                   In-Charge Teacher (Optional)
                 </label>
                 <select
@@ -718,6 +733,17 @@ export const AcademicManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel="Cancel"
+        danger
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((s) => ({ ...s, open: false }))}
+      />
     </div>
   );
 };
