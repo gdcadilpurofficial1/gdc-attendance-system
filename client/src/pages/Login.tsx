@@ -105,7 +105,7 @@ export const Login: React.FC = () => {
                   setUsername(e.target.value);
                   if (errorMsg) setErrorMsg('');
                 }}
-                placeholder="e.g. tariq_science"
+                placeholder="e.g. mail@gmail.com"
                 autoComplete="username"
                 autoCapitalize="none"
                 autoCorrect="off"
